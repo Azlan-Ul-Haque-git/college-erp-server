@@ -23,37 +23,37 @@ connectDB();
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { 
+  cors: {
     origin: [
       process.env.CLIENT_URL,
       "https://college-erp-client-dykqj9349-azlanulhaque9-4466s-projects.vercel.app",
       "http://localhost:3000"
-    ], 
-    methods: ["GET","POST"] 
+    ],
+    methods: ["GET", "POST"]
   },
 });
-app.use(cors({ 
+app.use(cors({
   origin: [
     process.env.CLIENT_URL,
-    "https://college-erp-client-dykqj9349-azlanulhaque9-4466s-projects.vercel.app",
+    "https://college-erp-client-eight.vercel.app",
     "http://localhost:3000"
-  ], 
-  credentials: true 
+  ],
+  credentials: true
 }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-app.get("/api/health", (req, res) => res.json({ status:"OK", time: new Date() }));
-app.use("/api/auth",       authRoutes);
-app.use("/api/students",   studentRoutes);
-app.use("/api/faculty",    facultyRoutes);
+app.get("/api/health", (req, res) => res.json({ status: "OK", time: new Date() }));
+app.use("/api/auth", authRoutes);
+app.use("/api/students", studentRoutes);
+app.use("/api/faculty", facultyRoutes);
 app.use("/api/attendance", attendanceRoutes);
-app.use("/api/marks",      marksRoutes);
-app.use("/api/fees",       feesRoutes);
-app.use("/api/notices",    noticeRoutes);
-app.use("/api/timetable",  timetableRoutes);
-app.use("/api/chat",       chatRoutes);
-app.use("/api/payment",    paymentRoutes);
+app.use("/api/marks", marksRoutes);
+app.use("/api/fees", feesRoutes);
+app.use("/api/notices", noticeRoutes);
+app.use("/api/timetable", timetableRoutes);
+app.use("/api/chat", chatRoutes);
+app.use("/api/payment", paymentRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
