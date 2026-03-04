@@ -22,13 +22,24 @@ connectDB();
 
 const app = express();
 const server = http.createServer(app);
-
 const io = new Server(server, {
-  cors: { origin: process.env.CLIENT_URL, methods: ["GET","POST"] },
+  cors: { 
+    origin: [
+      process.env.CLIENT_URL,
+      "https://college-erp-client-dykqj9349-azlanulhaque9-4466s-projects.vercel.app",
+      "http://localhost:3000"
+    ], 
+    methods: ["GET","POST"] 
+  },
 });
-initSocket(io);
-
-app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
+app.use(cors({ 
+  origin: [
+    process.env.CLIENT_URL,
+    "https://college-erp-client-dykqj9349-azlanulhaque9-4466s-projects.vercel.app",
+    "http://localhost:3000"
+  ], 
+  credentials: true 
+}));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
