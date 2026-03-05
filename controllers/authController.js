@@ -1,6 +1,6 @@
 import asyncHandler from "express-async-handler";
 import User from "../models/User.js";
-import { Student } from "../models/Student.js";
+import Student from "../models/Student.js";
 import { Faculty } from "../models/Faculty.js";
 import { generateToken, generateOTP } from "../utils/generateToken.js";
 import { sendEmail } from "../utils/sendEmail.js";
