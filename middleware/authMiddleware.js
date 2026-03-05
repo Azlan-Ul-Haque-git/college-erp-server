@@ -13,3 +13,11 @@ export const protect = asyncHandler(async (req, res, next) => {
     next();
   } catch (err) { res.status(401); throw new Error("Token invalid or expired"); }
 });
+
+export const authorize = (...roles) => (req, res, next) => {
+  if (!roles.includes(req.user.role)) {
+    res.status(403);
+    throw new Error(`Role '${req.user.role}' is not allowed`);
+  }
+  next();
+};
