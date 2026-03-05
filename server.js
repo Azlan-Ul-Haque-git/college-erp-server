@@ -42,7 +42,9 @@ app.use(cors({
 }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
-
+app.get("/", (req, res) => {
+  res.send("College ERP Backend Running 🚀");
+});
 app.get("/api/health", (req, res) => res.json({ status: "OK", time: new Date() }));
 app.use("/api/auth", authRoutes);
 app.use("/api/students", studentRoutes);
