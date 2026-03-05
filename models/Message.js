@@ -6,4 +6,4 @@ const messageSchema = new mongoose.Schema({
   isRead:  { type:Boolean, default:false },
   roomId:  { type:String },
 }, { timestamps:true });
-export const Message = mongoose.model("Message", messageSchema);
+export default mongoose.model("Message", messageSchema);

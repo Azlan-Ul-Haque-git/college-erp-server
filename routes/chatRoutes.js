@@ -1,6 +1,6 @@
 import express from "express";
 import { protect } from "../middleware/authMiddleware.js";
-import { Message } from "../models/Message.js";
+import Message from "../models/Message.js";
 import User from "../models/User.js";
 import asyncHandler from "express-async-handler";
 

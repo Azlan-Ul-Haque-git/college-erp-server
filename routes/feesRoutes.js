@@ -1,8 +1,8 @@
 import express from "express";
 import { protect } from "../middleware/authMiddleware.js";
 import { authorizeRoles } from "../middleware/roleMiddleware.js";
-import { Fees } from "../models/Fees.js";
-import { Student } from "../models/Student.js";
+import Fees from "../models/Fees.js";
+import Student from "../models/Student.js";
 import asyncHandler from "express-async-handler";
 
 const router = express.Router();

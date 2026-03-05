@@ -21,4 +21,4 @@ marksSchema.pre("save", function(next) {
   else                     this.grade="F";
   next();
 });
-export const Marks = mongoose.model("Marks", marksSchema);
+export default mongoose.model("Marks", marksSchema);

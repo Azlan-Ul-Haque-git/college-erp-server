@@ -7,4 +7,4 @@ const noticeSchema = new mongoose.Schema({
   targetRole: { type:String, enum:["all","student","faculty"], default:"all" },
   isActive:   { type:Boolean, default:true },
 }, { timestamps:true });
-export const Notice = mongoose.model("Notice", noticeSchema);
+export default mongoose.model("Notice", noticeSchema);

@@ -10,4 +10,4 @@ const timetableSchema = new mongoose.Schema({
     room:String,
   }],
 }, { timestamps:true });
-export const Timetable = mongoose.model("Timetable", timetableSchema);
+export default mongoose.model("Timetable", timetableSchema);

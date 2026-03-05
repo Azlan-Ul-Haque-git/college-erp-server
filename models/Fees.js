@@ -24,4 +24,4 @@ feesSchema.pre("save", function(next) {
   else                                          this.status="Partial";
   next();
 });
-export const Fees = mongoose.model("Fees", feesSchema);
+export default mongoose.model("Fees", feesSchema);
