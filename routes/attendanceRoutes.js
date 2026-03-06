@@ -37,13 +37,13 @@ router.post("/student-checkin", protect, authorize("student"), async (req, res) 
     if (distance > ALLOWED_RADIUS_METERS) {
       return res.status(400).json({
         success: false,
-        message: `Aap college se ${Math.round(distance)} meter door hain! College ke andar aao.`,
+        message: `You are ${Math.round(distance)} meter away from college Come to college Location.`,
       });
     }
 
     // Find student
     const student = await Student.findOne({ user: req.user._id });
-    if (!student) return res.status(404).json({ success: false, message: "Student nahi mila" });
+    if (!student) return res.status(404).json({ success: false, message: "Student not found" });
 
     const today = date || new Date().toISOString().split("T")[0];
 
@@ -57,7 +57,7 @@ router.post("/student-checkin", protect, authorize("student"), async (req, res) 
     if (existing) {
       return res.status(400).json({
         success: false,
-        message: "Aaj is subject ki attendance already submit ho gayi hai!",
+        message: "Todays Attendance for this Subject `already marked! If it has not been verified yet, please wait for faculty to verify.",
       });
     }
 
@@ -69,13 +69,13 @@ router.post("/student-checkin", protect, authorize("student"), async (req, res) 
       selfie,
       latitude,
       longitude,
-      status: "pending", // Faculty verify karega
+      status: "pending", // Faculty will verify later
       checkinTime: new Date(),
     });
 
     res.json({
       success: true,
-      message: "Selfie submit ho gayi! Faculty verify karegi.",
+      message: "Selfie and location received! Faculty will verify your attendance soon.",
       attendance,
     });
   } catch (err) {
@@ -149,7 +149,7 @@ router.post("/faculty-checkin", protect, authorize("faculty"), async (req, res) 
     if (distance > ALLOWED_RADIUS_METERS) {
       return res.status(400).json({
         success: false,
-        message: `Aap college se ${Math.round(distance)} meter door hain!`,
+        message: `You are ${Math.round(distance)} meter away from the college! Please check in from the college location.`,
       });
     }
 
@@ -162,15 +162,14 @@ router.post("/faculty-checkin", protect, authorize("faculty"), async (req, res) 
     });
 
     if (existing) {
-      return res.status(400).json({ success: false, message: "Aaj ki attendance already ho gayi!" });
+      return res.status(400).json({ success: false, message: "Today's Attendance Already Marked" });
     }
-
     const attendance = await Attendance.create({
       faculty: req.user._id,
       date: today,
       latitude,
       longitude,
-      status: "present",
+      status: "pending",
       type: "faculty",
       checkinTime: new Date(),
     });
@@ -181,6 +180,69 @@ router.post("/faculty-checkin", protect, authorize("faculty"), async (req, res) 
   }
 });
 
+// Admin gets pending faculty attendance
+router.get("/faculty-pending", protect, authorize("admin"), async (req, res) => {
+  try {
+
+    const records = await Attendance.find({
+      type: "faculty",
+      status: "pending"
+    }).populate("faculty", "name email");
+
+    res.json({ success: true, data: records });
+
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Admin verifies faculty attendance
+router.put("/faculty-verify/:id", protect, authorize("admin"), async (req, res) => {
+
+  try {
+
+    const { status } = req.body;
+
+    const attendance = await Attendance.findByIdAndUpdate(
+      req.params.id,
+      {
+        status,
+        verifiedBy: req.user._id,
+        verifiedAt: new Date()
+      },
+      { new: true }
+    );
+
+    res.json({
+      success: true,
+      message: `Faculty attendance ${status} mark ho gayi`,
+      attendance
+    });
+
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+
+});
+router.get("/all", protect, authorize("admin"), async (req, res) => {
+
+  try {
+
+    const records = await Attendance.find()
+      .populate({
+        path: "student",
+        populate: { path: "user", select: "name email" }
+      })
+      .populate("faculty", "name email")
+      .sort({ date: -1 });
+
+    res.json({ success: true, data: records });
+
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+
+});
 // @route GET /api/attendance/faculty-records
 // @desc Admin gets all faculty attendance
 // @access Admin
