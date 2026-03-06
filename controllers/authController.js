@@ -35,31 +35,21 @@ export const getMe = asyncHandler(async (req, res) => {
   else if (user.role === "faculty") profile = await Faculty.findOne({ user: user._id });
   res.json({ success: true, user: { ...user.toObject(), profile } });
 });
-
 export const forgotPassword = asyncHandler(async (req, res) => {
   const user = await User.findOne({ email: req.body.email });
   if (!user) { res.status(404); throw new Error("No account with this email"); }
   const otp = generateOTP();
-  user.resetOTP = otp; user.resetOTPExpire = Date.now() + 10 * 60 * 1000;
+  user.resetOTP = otp;
+  user.resetOTPExpire = Date.now() + 10 * 60 * 1000;
   await user.save();
-  await sendEmail({ to: req.body.email, subject: "Password Reset OTP", html: `<div style="padding:24px;border:2px solid #667eea;border-radius:12px"><h2 style="color:#667eea">Reset OTP</h2><div style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#764ba2;text-align:center;padding:16px;background:#f3f0ff;border-radius:8px">${otp}</div><p style="color:#666;font-size:13px">Expires in 10 minutes.</p></div>` });
+
+  // Response pehle bhejo, email baad mein
   res.json({ success: true, message: "OTP sent to email" });
-});
 
-export const resetPassword = asyncHandler(async (req, res) => {
-  const { email, otp, newPassword } = req.body;
-  const user = await User.findOne({ email, resetOTP: otp, resetOTPExpire: { $gt: Date.now() } });
-  if (!user) { res.status(400); throw new Error("Invalid or expired OTP"); }
-  user.password = newPassword; user.resetOTP = undefined; user.resetOTPExpire = undefined;
-  await user.save();
-  res.json({ success: true, message: "Password reset successful" });
+  // Email background mein bhejo
+  sendEmail({
+    to: req.body.email,
+    subject: "Password Reset OTP",
+    html: `<div style="padding:24px;border:2px solid #667eea;border-radius:12px"><h2 style="color:#667eea">Reset OTP</h2><div style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#764ba2;text-align:center;padding:16px;background:#f3f0ff;border-radius:8px">${otp}</div><p style="color:#666;font-size:13px">Expires in 10 minutes.</p></div>`
+  }).catch(err => console.log("Email error:", err.message));
 });
-
-export const changePassword = asyncHandler(async (req, res) => {
-  const { oldPassword, newPassword } = req.body;
-  const user = await User.findById(req.user._id);
-  if (!(await user.matchPassword(oldPassword))) { res.status(401); throw new Error("Incorrect current password"); }
-  user.password = newPassword; await user.save();
-  res.json({ success: true, message: "Password changed" });
-});
-//its for testing purpose only, remove in productionc
