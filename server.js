@@ -24,20 +24,12 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: [
-      process.env.CLIENT_URL,
-      "https://college-erp-client-dykqj9349-azlanulhaque9-4466s-projects.vercel.app",
-      "http://localhost:3000"
-    ],
+    origin: true,
     methods: ["GET", "POST"]
   },
 });
 app.use(cors({
-  origin: [
-    process.env.CLIENT_URL,
-    "https://college-erp-client-eight.vercel.app",
-    "http://localhost:3000"
-  ],
+  origin: true,
   credentials: true
 }));
 app.use(express.json({ limit: "10mb" }));
