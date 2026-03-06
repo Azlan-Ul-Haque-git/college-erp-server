@@ -62,3 +62,4 @@ export const changePassword = asyncHandler(async (req, res) => {
   user.password = newPassword; await user.save();
   res.json({ success: true, message: "Password changed" });
 });
+//its for testing purpose only, remove in productionc
