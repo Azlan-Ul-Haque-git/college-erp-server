@@ -8,15 +8,30 @@ const router = express.Router();
 
 router.get("/users", protect, asyncHandler(async (req, res) => {
   const role = req.user.role === "student" ? "faculty" : "student";
-  const users = await User.find({ role, isActive:true }).select("name role avatar");
-  res.json({ success:true, users });
+  const users = await User.find({ role, isActive: true }).select("name role avatar");
+  res.json({ success: true, users });
 }));
 
 router.get("/:userId", protect, asyncHandler(async (req, res) => {
   const roomId = [req.user._id.toString(), req.params.userId].sort().join("_");
-  const messages = await Message.find({ roomId }).populate("sender","name avatar").sort({ createdAt:1 });
-  await Message.updateMany({ roomId, receiver:req.user._id, isRead:false }, { isRead:true });
-  res.json({ success:true, messages });
+  const messages = await Message.find({ roomId }).populate("sender", "name avatar").sort({ createdAt: 1 });
+  await Message.updateMany({ roomId, receiver: req.user._id, isRead: false }, { isRead: true });
+  res.json({ success: true, messages });
+}));
+
+// ─── Send Message ─────────────────────────────────────────────────────────────
+router.post("/:userId", protect, asyncHandler(async (req, res) => {
+  const { content } = req.body;
+  if (!content?.trim()) { res.status(400); throw new Error("Message cannot be empty"); }
+  const roomId = [req.user._id.toString(), req.params.userId].sort().join("_");
+  const message = await Message.create({
+    roomId,
+    sender: req.user._id,
+    receiver: req.params.userId,
+    content: content.trim()
+  });
+  const populated = await message.populate("sender", "name avatar");
+  res.status(201).json({ success: true, message: populated });
 }));
 
 export default router;
