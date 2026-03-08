@@ -3,6 +3,7 @@ import { protect } from "../middleware/authMiddleware.js";
 import { authorizeRoles } from "../middleware/roleMiddleware.js";
 import Student from "../models/Student.js";
 import asyncHandler from "express-async-handler";
+import User from "../models/User.js";
 const router = express.Router();
 router.get("/", protect, asyncHandler(async (req, res) => {
   const { branch, year, section, search } = req.query;
@@ -27,8 +28,10 @@ router.put("/:id", protect, authorizeRoles("admin"), asyncHandler(async (req, re
 router.delete("/:id", protect, authorizeRoles("admin"), asyncHandler(async (req, res) => {
   const student = await Student.findById(req.params.id);
   if (!student) { res.status(404); throw new Error("Not found"); }
-  await student.user.deleteOne();
-  await student.deleteOne();
+  if (student.user) {
+    await User.findByIdAndDelete(student.user);
+  }
+  await Student.findByIdAndDelete(req.params.id);
   res.json({ success: true, message: "Student deleted" });
 }));
 export default router;
