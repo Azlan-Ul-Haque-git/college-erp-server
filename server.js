@@ -16,7 +16,11 @@ import timetableRoutes from "./routes/timetableRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import { errorHandler, notFound } from "./middleware/errorMiddleware.js";
-
+import assignmentRoutes from "./routes/assignmentRoutes.js";
+import leaveRoutes from "./routes/leaveRoutes.js";
+import notesRoutes from "./routes/notesRoutes.js";
+import grievanceRoutes from "./routes/grievanceRoutes.js";
+import examRoutes from "./routes/examRoutes.js";
 dotenv.config();
 connectDB();
 
@@ -50,7 +54,11 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use(notFound);
 app.use(errorHandler);
-
+app.use("/api/assignments", assignmentRoutes);
+app.use("/api/leaves", leaveRoutes);
+app.use("/api/notes", notesRoutes);
+app.use("/api/grievances", grievanceRoutes);
+app.use("/api/exams", examRoutes);
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 // render redeploy test
