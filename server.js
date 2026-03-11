@@ -21,6 +21,9 @@ import leaveRoutes from "./routes/leaveRoutes.js";
 import notesRoutes from "./routes/notesRoutes.js";
 import grievanceRoutes from "./routes/grievanceRoutes.js";
 import examRoutes from "./routes/examRoutes.js";
+import registrationRoutes from "./routes/registrationRoutes.js";
+import timetableRoutes from "./routes/timetableRoutes.js";
+import uploadRoutes from "./routes/uploadRoutes.js";
 dotenv.config();
 connectDB();
 
@@ -59,6 +62,9 @@ app.use("/api/leaves", leaveRoutes);
 app.use("/api/notes", notesRoutes);
 app.use("/api/grievances", grievanceRoutes);
 app.use("/api/exams", examRoutes);
+app.use("/api/registrations", registrationRoutes);
+app.use("/api/timetable", timetableRoutes);
+app.use("/api/upload", uploadRoutes);
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 // render redeploy test

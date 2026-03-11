@@ -9,16 +9,26 @@ const router = express.Router();
 router.get("/", protect, asyncHandler(async (req, res) => {
   const { branch, year, semester } = req.query;
   const filter = {};
-  if (branch)   filter.branch   = branch;
-  if (year)     filter.year     = +year;
+  if (branch) filter.branch = branch;
+  if (year) filter.year = +year;
   if (semester) filter.semester = +semester;
-  const timetable = await Timetable.find(filter).populate("slots.faculty", "user");
-  res.json({ success:true, timetable });
+  const timetable = await Timetable.find(filter);
+  res.json({ success: true, timetable });
 }));
 
 router.post("/", protect, authorizeRoles("admin"), asyncHandler(async (req, res) => {
   const tt = await Timetable.create(req.body);
-  res.status(201).json({ success:true, timetable:tt });
+  res.status(201).json({ success: true, timetable: tt });
+}));
+
+router.put("/:id", protect, authorizeRoles("admin"), asyncHandler(async (req, res) => {
+  const tt = await Timetable.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  res.json({ success: true, timetable: tt });
+}));
+
+router.delete("/:id", protect, authorizeRoles("admin"), asyncHandler(async (req, res) => {
+  await Timetable.findByIdAndDelete(req.params.id);
+  res.json({ success: true });
 }));
 
 export default router;
