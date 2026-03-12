@@ -24,10 +24,17 @@ import registrationRoutes from "./routes/registrationRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import { errorHandler, notFound } from "./middleware/errorMiddleware.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
-
+import rgpvRoutes from "./routes/rgpvRoutes.js";
+import cron from "node-cron";
+import { fetchRGPVNotices } from "./scrapers/rgpvScraper.js";
 dotenv.config();
 connectDB();
+cron.schedule("*/10 * * * *", () => {
 
+  fetchRGPVNotices();
+
+});
+fetchRGPVNotices();
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -64,6 +71,7 @@ app.use("/api/upload", uploadRoutes);
 app.use(notFound);
 app.use(errorHandler);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/rgpv", rgpvRoutes);
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
