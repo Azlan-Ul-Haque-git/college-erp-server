@@ -1,169 +1,213 @@
 import express from "express";
-import Attendance from "../models/Attendance.js";
-import Student from "../models/Student.js";
-import { protect } from "../middleware/authMiddleware.js";
-import { authorizeRoles } from "../middleware/roleMiddleware.js";
 import asyncHandler from "express-async-handler";
+import { protect, authorizeRoles } from "../middleware/authMiddleware.js";
+import Attendance from "../models/Attendance.js";
+import User from "../models/User.js";
 
 const router = express.Router();
 
-const COLLEGE_LAT = 23.1677;
-const COLLEGE_LNG = 79.9348;
-const ALLOWED_RADIUS_METERS = 5000; // 5km — relaxed for testing
+// ── Helper: today's date range ─────────────────────────────────────────────
+const todayRange = () => {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start.getTime() + 86_400_000);
+  return { start, end };
+};
 
-function getDistance(lat1, lng1, lat2, lng2) {
-  const R = 6371000;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
+// ══════════════════════════════════════════════════════════════════════════════
+// POST /api/attendance/checkin  — student or faculty self check-in
+// ══════════════════════════════════════════════════════════════════════════════
+router.post("/checkin", protect, asyncHandler(async (req, res) => {
+  const { start, end } = todayRange();
 
-// ── Student checkin ──────────────────────────────────────────────────────────
-router.post("/student-checkin", protect, authorizeRoles("student"), asyncHandler(async (req, res) => {
-  const { latitude, longitude, selfie, subject } = req.body;
+  const existing = await Attendance.findOne({ user: req.user._id, date: { $gte: start, $lt: end } });
 
-  if (!subject) { res.status(400); throw new Error("Subject required"); }
-
-  const distance = getDistance(latitude, longitude, COLLEGE_LAT, COLLEGE_LNG);
-  if (distance > ALLOWED_RADIUS_METERS) {
+  if (existing?.checkIn?.time) {
     res.status(400);
-    throw new Error(`You are ${Math.round(distance)}m away from college. Come to college location.`);
+    throw new Error("You have already checked in today.");
   }
 
-  const student = await Student.findOne({ user: req.user._id });
-  if (!student) { res.status(404); throw new Error("Student profile not found"); }
-
-  const today = new Date().toISOString().split("T")[0];
-
-  const existing = await Attendance.findOne({ student: student._id, subject, date: today });
+  let record;
   if (existing) {
-    res.status(400);
-    throw new Error("Attendance already marked for this subject today!");
+    existing.checkIn = { time: new Date(), method: "checkin" };
+    existing.approvalStatus = "pending";
+    existing.status = "present";
+    record = await existing.save();
+  } else {
+    record = await Attendance.create({
+      user: req.user._id,
+      userType: req.user.role === "faculty" ? "faculty" : "student",
+      date: new Date(),
+      status: "present",
+      approvalStatus: "pending",
+      checkIn: { time: new Date(), method: "checkin" },
+    });
   }
 
-  const attendance = await Attendance.create({
-    student: student._id,
-    subject, date: today, selfie,
-    latitude, longitude,
-    status: "pending",
-    checkinTime: new Date(),
-    type: "student",
-  });
-
-  res.json({ success: true, message: "Attendance submitted! Faculty will verify soon.", attendance });
+  res.json({ success: true, message: "Checked in. Awaiting admin approval.", data: record });
 }));
 
-// ── Student my attendance ────────────────────────────────────────────────────
-router.get("/my", protect, authorizeRoles("student"), asyncHandler(async (req, res) => {
-  const student = await Student.findOne({ user: req.user._id });
-  if (!student) { res.status(404); throw new Error("Student not found"); }
-  const records = await Attendance.find({ student: student._id, type: "student" }).sort({ date: -1 });
-  res.json({ success: true, data: records });
+// ══════════════════════════════════════════════════════════════════════════════
+// POST /api/attendance/checkout  — self check-out
+// ══════════════════════════════════════════════════════════════════════════════
+router.post("/checkout", protect, asyncHandler(async (req, res) => {
+  const { start, end } = todayRange();
+
+  const record = await Attendance.findOne({ user: req.user._id, date: { $gte: start, $lt: end } });
+
+  if (!record?.checkIn?.time) {
+    res.status(400);
+    throw new Error("You must check in before checking out.");
+  }
+  if (record.checkOut?.time) {
+    res.status(400);
+    throw new Error("You have already checked out today.");
+  }
+
+  record.checkOut = { time: new Date(), method: "checkin" };
+  await record.save();   // pre-save hook calculates workingHours
+
+  res.json({ success: true, message: "Checked out.", data: record });
 }));
 
-// ── Student attendance summary (subject-wise) ────────────────────────────────
-router.get("/my-summary", protect, authorizeRoles("student"), asyncHandler(async (req, res) => {
-  const student = await Student.findOne({ user: req.user._id });
-  if (!student) { res.status(404); throw new Error("Student not found"); }
+// ══════════════════════════════════════════════════════════════════════════════
+// GET /api/attendance/my-status  — today's record for logged-in user
+// ══════════════════════════════════════════════════════════════════════════════
+router.get("/my-status", protect, asyncHandler(async (req, res) => {
+  const { start, end } = todayRange();
+  const record = await Attendance.findOne({ user: req.user._id, date: { $gte: start, $lt: end } });
+  res.json({ success: true, data: record || null });
+}));
 
-  const records = await Attendance.find({ student: student._id, type: "student" });
+// ══════════════════════════════════════════════════════════════════════════════
+// GET /api/attendance/pending-approvals  — admin only
+// ══════════════════════════════════════════════════════════════════════════════
+router.get(
+  "/pending-approvals",
+  protect,
+  authorizeRoles("admin"),
+  asyncHandler(async (_req, res) => {
+    const records = await Attendance.find({ approvalStatus: "pending" })
+      .populate("user", "name email rollNumber employeeId role profilePicture")
+      .sort({ createdAt: -1 });
+    res.json({ success: true, data: records });
+  })
+);
 
-  // Group by subject
-  const subjectMap = {};
-  records.forEach(r => {
-    if (!subjectMap[r.subject]) subjectMap[r.subject] = { present: 0, total: 0 };
-    if (r.status !== "pending") {
-      subjectMap[r.subject].total++;
-      if (r.status === "present") subjectMap[r.subject].present++;
+// ══════════════════════════════════════════════════════════════════════════════
+// PATCH /api/attendance/:id/approve  — admin approve / reject
+// Body: { action: "approve"|"reject", reason?: string }
+// ══════════════════════════════════════════════════════════════════════════════
+router.patch(
+  "/:id/approve",
+  protect,
+  authorizeRoles("admin"),
+  asyncHandler(async (req, res) => {
+    const { action, reason } = req.body;
+    if (!["approve", "reject"].includes(action)) {
+      res.status(400);
+      throw new Error("action must be 'approve' or 'reject'");
     }
-  });
 
-  const summary = Object.entries(subjectMap).map(([subject, s]) => ({
-    subject,
-    present: s.present,
-    total: s.total,
-    percentage: s.total > 0 ? Math.round((s.present / s.total) * 100) : 0,
-  }));
+    const record = await Attendance.findById(req.params.id);
+    if (!record) { res.status(404); throw new Error("Record not found"); }
 
-  res.json({ success: true, summary });
-}));
+    record.approvalStatus = action === "approve" ? "approved" : "rejected";
+    record.approvedBy = req.user._id;
+    record.approvedAt = new Date();
+    record.rejectionReason = action === "reject" ? reason : undefined;
+    if (action === "reject") record.status = "absent";
 
-// ── Faculty gets pending attendance to verify ────────────────────────────────
-router.get("/pending", protect, authorizeRoles("faculty"), asyncHandler(async (req, res) => {
-  const { subject, date } = req.query;
-  const today = date || new Date().toISOString().split("T")[0];
-  const filter = { status: "pending", type: "student", date: today };
-  if (subject) filter.subject = subject;
+    await record.save();
+    res.json({ success: true, message: `Attendance ${action}d.`, data: record });
+  })
+);
 
-  const pending = await Attendance.find(filter).populate({
-    path: "student",
-    populate: { path: "user", select: "name email avatar" },
-  });
+// ══════════════════════════════════════════════════════════════════════════════
+// POST /api/attendance/bulk-approve  — admin bulk approve all pending
+// ══════════════════════════════════════════════════════════════════════════════
+router.post(
+  "/bulk-approve",
+  protect,
+  authorizeRoles("admin"),
+  asyncHandler(async (req, res) => {
+    const result = await Attendance.updateMany(
+      { approvalStatus: "pending" },
+      { $set: { approvalStatus: "approved", approvedBy: req.user._id, approvedAt: new Date() } }
+    );
+    res.json({ success: true, message: `${result.modifiedCount} records approved.` });
+  })
+);
 
-  res.json({ success: true, data: pending });
-}));
+// ══════════════════════════════════════════════════════════════════════════════
+// POST /api/attendance/mark  — faculty / admin mark a student
+// Body: { studentId, date, status, subject, course, semester, section }
+// ══════════════════════════════════════════════════════════════════════════════
+router.post(
+  "/mark",
+  protect,
+  authorizeRoles("faculty", "admin"),
+  asyncHandler(async (req, res) => {
+    const { studentId, date, status, subject, course, semester, section, remarks } = req.body;
 
-// ── Faculty verifies student attendance ─────────────────────────────────────
-router.put("/verify/:id", protect, authorizeRoles("faculty"), asyncHandler(async (req, res) => {
-  const { status } = req.body;
-  if (!["present", "absent"].includes(status)) { res.status(400); throw new Error("Invalid status"); }
+    const student = await User.findById(studentId);
+    if (!student || student.role !== "student") {
+      res.status(404);
+      throw new Error("Student not found");
+    }
 
-  const attendance = await Attendance.findByIdAndUpdate(
-    req.params.id,
-    { status, verifiedBy: req.user._id, verifiedAt: new Date() },
-    { new: true }
-  );
-  if (!attendance) { res.status(404); throw new Error("Record not found"); }
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
 
-  res.json({ success: true, message: `Marked as ${status}!`, attendance });
-}));
+    const record = await Attendance.findOneAndUpdate(
+      { user: studentId, date: { $gte: d, $lt: new Date(d.getTime() + 86_400_000) } },
+      {
+        $set: {
+          user: studentId, userType: "student", date: d,
+          status, subject, course, semester, section, remarks,
+          markedBy: req.user._id, approvalStatus: "not_required",
+        },
+      },
+      { upsert: true, new: true }
+    );
 
-// ── Faculty checkin ──────────────────────────────────────────────────────────
-router.post("/faculty-checkin", protect, authorizeRoles("faculty"), asyncHandler(async (req, res) => {
-  const { latitude, longitude } = req.body;
+    res.json({ success: true, data: record });
+  })
+);
 
-  const distance = getDistance(latitude, longitude, COLLEGE_LAT, COLLEGE_LNG);
-  if (distance > ALLOWED_RADIUS_METERS) {
-    res.status(400);
-    throw new Error(`You are ${Math.round(distance)}m away from college!`);
+// ══════════════════════════════════════════════════════════════════════════════
+// GET /api/attendance  — filtered list
+// Query: userId, course, from, to, userType, status, approvalStatus
+// ══════════════════════════════════════════════════════════════════════════════
+router.get("/", protect, asyncHandler(async (req, res) => {
+  const { userId, course, from, to, userType, status, approvalStatus } = req.query;
+  const filter = {};
+
+  // Students see only their own records
+  if (req.user.role === "student") {
+    filter.user = req.user._id;
+  } else if (userId) {
+    filter.user = userId;
   }
 
-  const today = new Date().toISOString().split("T")[0];
-  const existing = await Attendance.findOne({ faculty: req.user._id, date: today, type: "faculty" });
-  if (existing) { res.status(400); throw new Error("Today's attendance already marked!"); }
+  if (userType) filter.userType = userType;
+  if (course) filter.course = course;
+  if (status) filter.status = status;
+  if (approvalStatus) filter.approvalStatus = approvalStatus;
+  if (from || to) {
+    filter.date = {};
+    if (from) filter.date.$gte = new Date(from);
+    if (to) filter.date.$lte = new Date(to);
+  }
 
-  const attendance = await Attendance.create({
-    faculty: req.user._id,
-    date: today, latitude, longitude,
-    status: "present",
-    type: "faculty",
-    checkinTime: new Date(),
-  });
+  const records = await Attendance.find(filter)
+    .populate("user", "name email rollNumber employeeId role profilePicture")
+    .populate("markedBy", "name")
+    .populate("approvedBy", "name")
+    .sort({ date: -1 })
+    .limit(500);
 
-  res.json({ success: true, message: "Faculty attendance marked!", attendance });
-}));
-
-// ── Faculty my attendance history ────────────────────────────────────────────
-router.get("/faculty-my", protect, authorizeRoles("faculty"), asyncHandler(async (req, res) => {
-  const records = await Attendance.find({ faculty: req.user._id, type: "faculty" }).sort({ date: -1 });
-  res.json({ success: true, data: records });
-}));
-
-// ── Admin routes ─────────────────────────────────────────────────────────────
-router.get("/faculty-records", protect, authorizeRoles("admin"), asyncHandler(async (req, res) => {
-  const records = await Attendance.find({ type: "faculty" })
-    .populate("faculty", "name email")
-    .sort({ date: -1 });
-  res.json({ success: true, data: records });
-}));
-
-router.get("/all", protect, authorizeRoles("admin"), asyncHandler(async (req, res) => {
-  const records = await Attendance.find()
-    .populate({ path: "student", populate: { path: "user", select: "name email" } })
-    .populate("faculty", "name email")
-    .sort({ date: -1 });
-  res.json({ success: true, data: records });
+  res.json({ success: true, count: records.length, data: records });
 }));
 
 export default router;
