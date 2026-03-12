@@ -23,6 +23,7 @@ import examRoutes from "./routes/examRoutes.js";
 import registrationRoutes from "./routes/registrationRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import { errorHandler, notFound } from "./middleware/errorMiddleware.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
 
 dotenv.config();
 connectDB();
@@ -62,6 +63,7 @@ app.use("/api/upload", uploadRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
+app.use("/api/notifications", notificationRoutes);
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
