@@ -68,10 +68,11 @@ app.use("/api/exams", examRoutes);
 app.use("/api/registrations", registrationRoutes);
 app.use("/api/upload", uploadRoutes);
 
-app.use(notFound);
-app.use(errorHandler);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/rgpv", rgpvRoutes);
+
+app.use(notFound);
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

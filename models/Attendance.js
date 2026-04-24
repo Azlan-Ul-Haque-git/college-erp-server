@@ -25,7 +25,6 @@ const checkInOutSchema = new mongoose.Schema(
       enum: ["manual", "qr", "face", "checkin"],
       default: "checkin"
     }
-
   },
   { _id: false }
 );
@@ -33,13 +32,16 @@ const checkInOutSchema = new mongoose.Schema(
 /* ───────────── Main Attendance Schema ───────────── */
 
 const attendanceSchema = new mongoose.Schema(
-
   {
-
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true
+    },
+
+    userType: {
+      type: String,
+      enum: ["student", "faculty"]
     },
 
     date: {
@@ -65,19 +67,33 @@ const attendanceSchema = new mongoose.Schema(
       type: String,
       enum: ["present", "absent"],
       default: "present"
-    }
+    },
 
+    approvalStatus: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "pending"
+    },
+
+    approvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User"
+    },
+
+    approvedAt: Date,
+
+    rejectionReason: String,
+
+    workingHours: Number
   },
-
   {
     timestamps: true
   }
-
 );
 
-/* ───────────── Prevent Duplicate Attendance ───────────── */
+/* ───────────── Index ───────────── */
 
-attendanceSchema.index({ user: 1, date: 1 }, { unique: true });
+attendanceSchema.index({ user: 1, date: 1 });
 
 /* ───────────── Export Model ───────────── */
 
