@@ -5,6 +5,8 @@ import http from "http";
 import { Server } from "socket.io";
 import connectDB from "./config/db.js";
 import { initSocket } from "./socket/socketHandler.js";
+
+// ROUTES
 import authRoutes from "./routes/authRoutes.js";
 import studentRoutes from "./routes/studentRoutes.js";
 import facultyRoutes from "./routes/facultyRoutes.js";
@@ -22,33 +24,62 @@ import grievanceRoutes from "./routes/grievanceRoutes.js";
 import examRoutes from "./routes/examRoutes.js";
 import registrationRoutes from "./routes/registrationRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
-import { errorHandler, notFound } from "./middleware/errorMiddleware.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import rgpvRoutes from "./routes/rgpvRoutes.js";
+
+import { errorHandler, notFound } from "./middleware/errorMiddleware.js";
+
 import cron from "node-cron";
 import { fetchRGPVNotices } from "./scrapers/rgpvScraper.js";
+
 dotenv.config();
 connectDB();
-cron.schedule("*/10 * * * *", () => {
 
-  fetchRGPVNotices();
+// ✅ Allowed origins (keep real domain here)
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://your-frontend.vercel.app"
+];
 
-});
+// CRON
+cron.schedule("*/10 * * * *", () => fetchRGPVNotices());
 fetchRGPVNotices();
+
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: true, methods: ["GET", "POST"] },
-});
 
-initSocket(io);
+// =========================
+// ✅ SINGLE EXPRESS CORS (no duplicates)
+// =========================
+app.use(cors({
+  origin: (origin, callback) => {
+    // allow non-browser or same-origin
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 
-app.use(cors({ origin: true, credentials: true }));
+// Preflight
+app.options("*", cors());
+
+// =========================
+// BODY PARSER
+// =========================
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
+// =========================
+// ROUTES
+// =========================
 app.get("/", (req, res) => res.send("College ERP Backend Running 🚀"));
-app.get("/api/health", (req, res) => res.json({ status: "OK", time: new Date() }));
+app.get("/api/health", (req, res) =>
+  res.json({ status: "OK", time: new Date() })
+);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/students", studentRoutes);
@@ -67,12 +98,34 @@ app.use("/api/grievances", grievanceRoutes);
 app.use("/api/exams", examRoutes);
 app.use("/api/registrations", registrationRoutes);
 app.use("/api/upload", uploadRoutes);
-
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/rgpv", rgpvRoutes);
 
+// =========================
+// ✅ SOCKET.IO (same origins, credentials true)
+// =========================
+const io = new Server(server, {
+  cors: {
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE"]
+  }
+});
+
+initSocket(io);
+
+// =========================
+// ERROR HANDLING
+// =========================
 app.use(notFound);
 app.use(errorHandler);
 
+// START
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
