@@ -35,36 +35,17 @@ import { fetchRGPVNotices } from "./scrapers/rgpvScraper.js";
 dotenv.config();
 connectDB();
 
-// ✅ Allowed origins (keep real domain here)
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:3000",
-  "https://your-frontend.vercel.app"
-];
-
-// CRON
-cron.schedule("*/10 * * * *", () => fetchRGPVNotices());
-fetchRGPVNotices();
-
 const app = express();
 const server = http.createServer(app);
 
 // =========================
-// ✅ SINGLE EXPRESS CORS (no duplicates)
+// ✅ FINAL CORS (PERMANENT FIX)
 // =========================
 app.use(cors({
-  origin: (origin, callback) => {
-    // allow non-browser or same-origin
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error("Not allowed by CORS"));
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  origin: true, // sab allow karega
+  credentials: true
 }));
 
-// Preflight
 app.options("*", cors());
 
 // =========================
@@ -74,9 +55,16 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // =========================
+// CRON
+// =========================
+cron.schedule("*/10 * * * *", () => fetchRGPVNotices());
+fetchRGPVNotices();
+
+// =========================
 // ROUTES
 // =========================
 app.get("/", (req, res) => res.send("College ERP Backend Running 🚀"));
+
 app.get("/api/health", (req, res) =>
   res.json({ status: "OK", time: new Date() })
 );
@@ -102,17 +90,12 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/rgpv", rgpvRoutes);
 
 // =========================
-// ✅ SOCKET.IO (same origins, credentials true)
+// ✅ SOCKET.IO (FIXED)
 // =========================
 const io = new Server(server, {
   cors: {
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      return callback(new Error("Not allowed by CORS"));
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE"]
+    origin: true,
+    credentials: true
   }
 });
 
@@ -124,7 +107,9 @@ initSocket(io);
 app.use(notFound);
 app.use(errorHandler);
 
-// START
+// =========================
+// START SERVER
+// =========================
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
