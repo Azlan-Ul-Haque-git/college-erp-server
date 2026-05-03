@@ -91,9 +91,11 @@ router.post(
         time: new Date(),
         method: "face",
         location: { lat, lng },
+        image, // ✅ FIX
       };
 
       existing.location = { lat, lng };
+      existing.selfie = image; // ✅ FIX
       existing.faceVerified = true;
       existing.status = "present";
       existing.approvalStatus = "pending";
@@ -111,12 +113,13 @@ router.post(
         faceVerified: true,
         status: "present",
         approvalStatus: "pending",
-
         checkIn: {
           time: new Date(),
           method: "face",
           location: { lat, lng },
+          image,
         },
+        selfie: image,
       });
     }
 
@@ -134,11 +137,26 @@ router.post(
   "/checkout",
   protect,
   asyncHandler(async (req, res) => {
-    const { image } = req.body;
+    const { lat, lng, image } = req.body;
 
-    if (!image) {
+    if (!lat || !lng || !image) {
       res.status(400);
-      throw new Error("Face image required");
+      throw new Error("Location + face image required");
+    }
+
+    /* 🔥 Location validation (FIX) */
+
+    const distance = getDistance(
+      { latitude: Number(lat), longitude: Number(lng) },
+      {
+        latitude: COLLEGE_LOCATION.lat,
+        longitude: COLLEGE_LOCATION.lng,
+      }
+    );
+
+    if (distance > COLLEGE_LOCATION.radius) {
+      res.status(400);
+      throw new Error("You are outside college campus");
     }
 
     const { start, end } = todayRange();
@@ -180,7 +198,8 @@ router.post(
     record.checkOut = {
       time: new Date(),
       method: "face",
-      location: record.location,
+      location: { lat, lng }, // ✅ FIX
+      image, // ✅ FIX
     };
 
     const diffMs =
@@ -321,13 +340,7 @@ router.get(
   "/",
   protect,
   asyncHandler(async (req, res) => {
-    const {
-      userId,
-      from,
-      to,
-      status,
-      approvalStatus,
-    } = req.query;
+    const { userId, from, to, status, approvalStatus } = req.query;
 
     const filter = {};
 
@@ -338,8 +351,7 @@ router.get(
     }
 
     if (status) filter.status = status;
-    if (approvalStatus)
-      filter.approvalStatus = approvalStatus;
+    if (approvalStatus) filter.approvalStatus = approvalStatus;
 
     if (from || to) {
       filter.date = {};

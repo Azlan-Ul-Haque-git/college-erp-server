@@ -6,9 +6,9 @@ import { getDistance } from "geolib";
 export const checkIn = async (req, res) => {
     try {
 
-        const { lat, lng } = req.body;
+        const { lat, lng, image } = req.body;
 
-        if (!lat || !lng) {
+        if (!lat || !lng || !image) {
             return res.status(400).json({
                 message: "Location required"
             });
@@ -47,104 +47,154 @@ export const checkIn = async (req, res) => {
         }
 
         /* ───── Create attendance ───── */
+        export const checkIn = async (req, res) => {
+            try {
 
-        const attendance = await Attendance.create({
+                const { lat, lng, image } = req.body;
 
-            user: req.user._id,
+                if (!lat || !lng || !image) {
+                    return res.status(400).json({
+                        message: "Location + selfie required"
+                    });
+                }
 
-            date: new Date(),
+                const distance = getDistance(
+                    { latitude: lat, longitude: lng },
+                    { latitude: COLLEGE_LOCATION.lat, longitude: COLLEGE_LOCATION.lng }
+                );
 
-            checkIn: {
-                time: new Date(),
-                location: { lat, lng },
-                method: "checkin"
-            },
+                if (distance > COLLEGE_LOCATION.radius) {
+                    return res.status(400).json({
+                        message: "You are outside college campus"
+                    });
+                }
 
-            location: { lat, lng },
+                const todayStart = new Date();
+                todayStart.setHours(0, 0, 0, 0);
 
-            faceVerified: true,
+                const todayEnd = new Date();
+                todayEnd.setHours(23, 59, 59, 999);
 
-            status: "present"
+                const existing = await Attendance.findOne({
+                    user: req.user._id,
+                    date: { $gte: todayStart, $lte: todayEnd }
+                });
 
-        });
+                if (existing) {
+                    return res.status(400).json({
+                        message: "Attendance already marked today"
+                    });
+                }
 
-        res.json({
-            success: true,
-            message: "Check-in successful",
-            attendance
-        });
+                const attendance = await Attendance.create({
 
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
+                    user: req.user._id,
+                    userType: req.user.role, // 🔥 IMPORTANT
 
-/* ───────────── CHECK OUT ───────────── */
+                    date: new Date(),
 
-export const checkOut = async (req, res) => {
-    try {
+                    checkIn: {
+                        time: new Date(),
+                        location: { lat, lng },
+                        method: "checkin",
+                        image
+                    },
 
-        const attendance = await Attendance.findOne({
-            user: req.user._id
-        }).sort({ createdAt: -1 });
+                    location: { lat, lng },
 
-        if (!attendance) {
-            return res.status(404).json({
-                message: "No attendance found"
+                    selfie: image,
+
+                    faceVerified: true,
+
+                    status: "present"
+                });
+
+                res.json({
+                    success: true,
+                    message: "Check-in successful",
+                    attendance
+                });
+
+            } catch (error) {
+                res.status(500).json({ message: error.message });
+            }
+        };
+        /* ───────────── CHECK OUT ───────────── */
+        export const checkOut = async (req, res) => {
+            try {
+
+                const { lat, lng, image } = req.body;
+
+                const todayStart = new Date();
+                todayStart.setHours(0, 0, 0, 0);
+
+                const todayEnd = new Date();
+                todayEnd.setHours(23, 59, 59, 999);
+
+                const attendance = await Attendance.findOne({
+                    user: req.user._id,
+                    date: { $gte: todayStart, $lte: todayEnd }
+                });
+
+                if (!attendance) {
+                    return res.status(404).json({
+                        message: "No attendance found for today"
+                    });
+                }
+
+                if (attendance.checkOut?.time) {
+                    return res.status(400).json({
+                        message: "Already checked out"
+                    });
+                }
+
+                attendance.checkOut = {
+                    time: new Date(),
+                    location: { lat, lng }, // 🔥 add
+                    image, // 🔥 add selfie
+                    method: "checkin"
+                };
+
+                await attendance.save();
+
+                res.json({
+                    success: true,
+                    message: "Check-out successful",
+                    attendance
+                });
+
+            } catch (error) {
+                res.status(500).json({ message: error.message });
+            }
+        };
+        /* ───────────── GET TODAY ATTENDANCE ───────────── */
+
+
+        export const getTodayAttendance = async (req, res) => {
+
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+
+            const todayEnd = new Date();
+            todayEnd.setHours(23, 59, 59, 999);
+
+            const attendance = await Attendance.findOne({
+                user: req.user._id,
+                date: { $gte: todayStart, $lte: todayEnd }
             });
-        }
 
-        if (attendance.checkOut?.time) {
-            return res.status(400).json({
-                message: "Already checked out"
-            });
-        }
-
-        attendance.checkOut = {
-            time: new Date(),
-            method: "checkin"
+            res.json(attendance);
         };
 
-        await attendance.save();
+        /* ───────────── ADMIN / FACULTY VIEW ALL ───────────── */
 
-        res.json({
-            success: true,
-            message: "Check-out successful",
-            attendance
-        });
+        export const getAllAttendance = async (req, res) => {
 
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
+            const attendance = await Attendance
+                .find()
+                .populate("user", "name email role")
+                .sort({ createdAt: -1 });
 
-/* ───────────── GET TODAY ATTENDANCE ───────────── */
+            res.json(attendance);
 
-export const getTodayAttendance = async (req, res) => {
-
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
-
-    const attendance = await Attendance.findOne({
-        user: req.user._id,
-        date: { $gte: todayStart, $lte: todayEnd }
-    });
-
-    res.json(attendance);
-};
-
-/* ───────────── ADMIN / FACULTY VIEW ALL ───────────── */
-
-export const getAllAttendance = async (req, res) => {
-
-    const attendance = await Attendance
-        .find()
-        .populate("user", "name email role")
-        .sort({ createdAt: -1 });
-
-    res.json(attendance);
-
-};
+        };

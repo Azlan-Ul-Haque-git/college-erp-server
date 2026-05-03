@@ -16,8 +16,12 @@ const checkInOutSchema = new mongoose.Schema(
     time: { type: Date },
 
     location: {
-      lat: Number,
-      lng: Number
+      lat: { type: Number },
+      lng: { type: Number }
+    },
+
+    image: {
+      type: String // 🔥 selfie (base64 or URL)
     },
 
     method: {
@@ -41,7 +45,8 @@ const attendanceSchema = new mongoose.Schema(
 
     userType: {
       type: String,
-      enum: ["student", "faculty"]
+      enum: ["student", "faculty"],
+      required: true   // 🔥 important
     },
 
     date: {
@@ -54,8 +59,12 @@ const attendanceSchema = new mongoose.Schema(
     checkOut: checkInOutSchema,
 
     location: {
-      lat: Number,
-      lng: Number
+      lat: { type: Number },
+      lng: { type: Number }
+    },
+
+    selfie: {
+      type: String // 🔥 backup image
     },
 
     faceVerified: {
@@ -84,16 +93,26 @@ const attendanceSchema = new mongoose.Schema(
 
     rejectionReason: String,
 
-    workingHours: Number
+    workingHours: {
+      type: Number,
+      default: 0
+    }
   },
   {
     timestamps: true
   }
 );
 
-/* ───────────── Index ───────────── */
+/* ───────────── Index (OPTIMIZED) ───────────── */
 
+// 🔥 fast query for daily attendance
 attendanceSchema.index({ user: 1, date: 1 });
+
+// 🔥 prevent duplicate attendance per day (VERY IMPORTANT)
+attendanceSchema.index(
+  { user: 1, date: 1 },
+  { unique: false } // keep false if controller already handling duplicate
+);
 
 /* ───────────── Export Model ───────────── */
 
