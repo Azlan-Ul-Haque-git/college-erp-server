@@ -35,12 +35,13 @@ import {
 dotenv.config();
 
 const app = express();
-
-const server = http.createServer(app);
-
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: [
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      "https://college-erp-client-eight.vercel.app"
+    ],
     credentials: true,
   },
 });
@@ -49,7 +50,11 @@ initSocket(io);
 
 app.use(
   cors({
-    origin: "*",
+    origin: [
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      "https://college-erp-client-eight.vercel.app"
+    ],
     credentials: true,
   })
 );
