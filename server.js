@@ -69,16 +69,8 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-connectDB();
+
 // RGPV Notice Scraper
-
-cron.schedule("*/30 * * * *", async () => {
-
-  console.log("Checking RGPV notices...");
-
-  await fetchRGPVNotices();
-
-});
 connectDB();
 
 fetchRGPVNotices();
