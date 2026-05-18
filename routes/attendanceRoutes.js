@@ -378,5 +378,26 @@ router.get(
     });
   })
 );
+/* ═════════ FACULTY RECORDS ═════════ */
 
+router.get(
+  "/faculty-records",
+  protect,
+  authorizeRoles("admin"),
+  asyncHandler(async (req, res) => {
+
+    const records = await Attendance.find({
+      userType: "faculty",
+    })
+      .populate("user", "name email role")
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      count: records.length,
+      data: records,
+    });
+
+  })
+);
 export default router;

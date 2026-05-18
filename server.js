@@ -26,6 +26,8 @@ import registrationRoutes from "./routes/registrationRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import rgpvRoutes from "./routes/rgpvRoutes.js";
+import cron from "node-cron";
+import { fetchRGPVNotices } from "./utils/fetchRGPVNotices.js";
 
 import {
   errorHandler,
@@ -41,6 +43,8 @@ const io = new Server(server, {
     origin: [
       "http://localhost:3000",
       "http://127.0.0.1:3000",
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
       "https://college-erp-client-eight.vercel.app"
     ],
     credentials: true,
@@ -54,6 +58,8 @@ app.use(
     origin: [
       "http://localhost:3000",
       "http://127.0.0.1:3000",
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
       "https://college-erp-client-eight.vercel.app"
     ],
     credentials: true,
@@ -64,6 +70,26 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 connectDB();
+// RGPV Notice Scraper
+
+cron.schedule("*/30 * * * *", async () => {
+
+  console.log("Checking RGPV notices...");
+
+  await fetchRGPVNotices();
+
+});
+connectDB();
+
+fetchRGPVNotices();
+
+cron.schedule("*/30 * * * *", async () => {
+
+  console.log("Checking RGPV notices...");
+
+  await fetchRGPVNotices();
+
+});
 
 app.get("/", (req, res) => {
   res.send("College ERP Backend Running 🚀");
