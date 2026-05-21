@@ -127,10 +127,18 @@ export const login = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error("Please provide email and password");
   }
-
   const user = await User.findOne({ email });
 
-  if (!user || !(await user.matchPassword(password))) {
+  console.log("USER FOUND:", user?.email);
+  console.log("DB PASSWORD:", user?.password);
+
+  const isMatch = user
+    ? await user.matchPassword(password)
+    : false;
+
+  console.log("PASSWORD MATCH:", isMatch);
+
+  if (!user || !isMatch) {
     res.status(401);
     throw new Error("Invalid email or password");
   }

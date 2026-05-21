@@ -4,6 +4,7 @@ import { register, login, getMe, forgotPassword, resetPassword, changePassword }
 import { protect } from "../middleware/authMiddleware.js";
 import { authorizeRoles } from "../middleware/roleMiddleware.js";
 import User from "../models/User.js";
+import bcrypt from "bcryptjs";
 
 const router = express.Router();
 
@@ -24,6 +25,32 @@ router.put("/update-avatar", protect, asyncHandler(async (req, res) => {
     const { avatar } = req.body;
     const user = await User.findByIdAndUpdate(req.user._id, { avatar }, { new: true }).select("-password");
     res.json({ success: true, user });
+}));
+
+router.get("/create-admin", asyncHandler(async (req, res) => {
+
+    const exists = await User.findOne({
+        email: "azlanulhaque9@gmail.com"
+    });
+
+    if (exists) {
+        return res.json({
+            message: "Admin already exists"
+        });
+    }
+
+    const admin = await User.create({
+        name: "Admin",
+        email: "azlanulhaque9@gmail.com",
+        password: "Azlankpcadmin123",
+        role: "admin"
+    });
+
+    res.json({
+        success: true,
+        message: "Admin created successfully"
+    });
+
 }));
 
 export default router;
