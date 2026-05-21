@@ -7,6 +7,7 @@ import { getDistance } from "geolib";
 import { COLLEGE_LOCATION } from "../models/Attendance.js";
 import { verifyFace } from "../utils/faceVerify.js";
 
+
 const router = express.Router();
 
 /* ───────── Helper: today range ───────── */
