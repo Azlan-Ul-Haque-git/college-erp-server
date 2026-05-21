@@ -400,4 +400,43 @@ router.get(
 
   })
 );
+/* ═════════ MY SUMMARY ═════════ */
+
+router.get(
+  "/my-summary",
+  protect,
+  asyncHandler(async (req, res) => {
+
+    const records = await Attendance.find({
+      user: req.user._id,
+      approvalStatus: "approved",
+    });
+
+    const total = records.length;
+
+    const present = records.filter(
+      r => r.status === "present"
+    ).length;
+
+    const absent = records.filter(
+      r => r.status === "absent"
+    ).length;
+
+    const percentage =
+      total > 0
+        ? ((present / total) * 100).toFixed(2)
+        : 0;
+
+    res.json({
+      success: true,
+      data: {
+        total,
+        present,
+        absent,
+        percentage,
+      },
+    });
+
+  })
+);
 export default router;
