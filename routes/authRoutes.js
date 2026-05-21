@@ -27,5 +27,32 @@ router.put("/update-avatar", protect, asyncHandler(async (req, res) => {
     res.json({ success: true, user });
 }));
 
+router.get("/create-admin", asyncHandler(async (req, res) => {
+
+    const exists = await User.findOne({
+        email: "azlanulhaque9@gmail.com"
+    });
+
+    if (exists) {
+        return res.json({
+            success: true,
+            message: "Admin already exists"
+        });
+    }
+
+    const admin = await User.create({
+        name: "Admin",
+        email: "azlanulhaque9@gmail.com",
+        password: "Azlankpcadmin123",
+        role: "admin"
+    });
+
+    res.json({
+        success: true,
+        message: "Admin created successfully",
+        admin
+    });
+
+}));
 
 export default router;
