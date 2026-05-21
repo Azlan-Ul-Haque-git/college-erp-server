@@ -26,6 +26,7 @@ import registrationRoutes from "./routes/registrationRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import rgpvRoutes from "./routes/rgpvRoutes.js";
+
 import cron from "node-cron";
 import { fetchRGPVNotices } from "./utils/fetchRGPVNotices.js";
 
@@ -37,7 +38,9 @@ import {
 dotenv.config();
 
 const app = express();
+
 const server = http.createServer(app);
+
 const io = new Server(server, {
   cors: {
     origin: [
@@ -53,35 +56,19 @@ const io = new Server(server, {
 
 initSocket(io);
 
-app.use(
-  cors({
-    origin: [
-      "http://localhost:3000",
-      "http://127.0.0.1:3000",
-      "http://localhost:5173",
-      "http://127.0.0.1:5173",
-      "https://college-erp-client-eight.vercel.app"
-    ],
-    credentials: true,
-  })
-);
+app.use(cors({
+  origin: [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://college-erp-client-eight.vercel.app"
+  ],
+  credentials: true,
+}));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-
-// RGPV Notice Scraper
-connectDB();
-
-fetchRGPVNotices();
-
-cron.schedule("*/30 * * * *", async () => {
-
-  console.log("Checking RGPV notices...");
-
-  await fetchRGPVNotices();
-
-});
 
 app.get("/", (req, res) => {
   res.send("College ERP Backend Running 🚀");
@@ -112,6 +99,29 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+const startServer = async () => {
+  try {
+
+    await connectDB();
+
+    console.log("MongoDB Connected");
+
+    await fetchRGPVNotices();
+
+    cron.schedule("*/30 * * * *", async () => {
+      console.log("Checking RGPV notices...");
+      await fetchRGPVNotices();
+    });
+
+    server.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+
+  } catch (error) {
+
+    console.log("MongoDB Error:", error);
+
+  }
+};
+
+startServer();
