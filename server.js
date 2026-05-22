@@ -104,7 +104,6 @@ const startServer = async () => {
 
     await connectDB();
 
-    console.log("MongoDB Connected");
 
     await fetchRGPVNotices();
 
