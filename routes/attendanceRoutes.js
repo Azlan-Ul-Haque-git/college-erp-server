@@ -243,33 +243,13 @@ router.get(
 
 /* ═════════ ADMIN: PENDING APPROVALS ═════════ */
 
-router.get(
-  "/pending-approvals",
-  protect,
-  authorizeRoles("admin"),
-  asyncHandler(async (req, res) => {
-    const records = await Attendance.find({
-      approvalStatus: "pending",
-    })
-      .populate(
-        "user",
-        "name email rollNumber employeeId role profilePicture"
-      )
-      .sort({ createdAt: -1 });
-
-    res.json({
-      success: true,
-      data: records,
-    });
-  })
-);
 
 /* ═════════ ADMIN: APPROVE / REJECT ═════════ */
 
 router.patch(
   "/:id/approve",
   protect,
-  authorizeRoles("admin"),
+  authorizeRoles("faculty", "admin"),
   asyncHandler(async (req, res) => {
     const { action, reason } = req.body;
 
@@ -314,7 +294,7 @@ router.patch(
 router.post(
   "/bulk-approve",
   protect,
-  authorizeRoles("admin"),
+  authorizeRoles("faculty", "admin"),
   asyncHandler(async (req, res) => {
     const result = await Attendance.updateMany(
       { approvalStatus: "pending" },

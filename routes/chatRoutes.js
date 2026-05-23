@@ -8,8 +8,11 @@ const router = express.Router();
 
 router.get("/users", protect, asyncHandler(async (req, res) => {
   const role = req.user.role === "student" ? "faculty" : "student";
-  const users = await User.find({ role, isActive: true }).select("name role avatar");
-  res.json({ success: true, users });
+  const users = await User.find({ role }).select("name role avatar");
+  res.json({
+    success: true,
+    data: users
+  });
 }));
 
 router.get("/:userId", protect, asyncHandler(async (req, res) => {

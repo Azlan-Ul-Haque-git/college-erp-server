@@ -26,4 +26,41 @@ router.delete("/:id", protect, authorizeRoles("admin"), asyncHandler(async (req,
   res.json({ success: true, message: "Faculty deleted" });
 }));
 
+// FACULTY DASHBOARD
+router.get(
+  "/dashboard",
+  protect,
+  authorizeRoles("faculty"),
+  asyncHandler(async (req, res) => {
+
+    const faculty = await Faculty.findOne({
+      user: req.user._id
+    }).populate("user", "name email avatar");
+
+    res.json({
+      success: true,
+      data: faculty,
+    });
+
+  })
+);
+
+// FACULTY PROFILE
+router.get(
+  "/profile",
+  protect,
+  authorizeRoles("faculty"),
+  asyncHandler(async (req, res) => {
+
+    const faculty = await Faculty.findOne({
+      user: req.user._id
+    }).populate("user", "name email avatar");
+
+    res.json({
+      success: true,
+      data: faculty,
+    });
+
+  })
+);
 export default router;

@@ -223,4 +223,39 @@ router.delete(
   })
 );
 
+// STUDENT DASHBOARD
+router.get(
+  "/dashboard",
+  protect,
+  authorizeRoles("student"),
+  asyncHandler(async (req, res) => {
+
+    const student = await User.findById(req.user._id)
+      .select("-password");
+
+    res.json({
+      success: true,
+      data: student,
+    });
+
+  })
+);
+
+// STUDENT PROFILE
+router.get(
+  "/profile",
+  protect,
+  authorizeRoles("student"),
+  asyncHandler(async (req, res) => {
+
+    const student = await User.findById(req.user._id)
+      .select("-password");
+
+    res.json({
+      success: true,
+      data: student,
+    });
+
+  })
+);
 export default router;
