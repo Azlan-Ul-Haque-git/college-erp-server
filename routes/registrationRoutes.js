@@ -17,7 +17,18 @@ router.post("/", asyncHandler(async (req, res) => {
   if (exists) { res.status(400); throw new Error("Registration request already submitted for this email"); }
   const userExists = await User.findOne({ email });
   if (userExists) { res.status(400); throw new Error("Email already registered"); }
-  const registration = await Registration.create(req.body);
+  const registration = await Registration.create({
+    ...req.body,
+
+    // Frontend agar studentStatus bheje to wahi use karo,
+    // warna status se lo, warna regular.
+    studentStatus:
+      req.body.studentStatus ||
+      req.body.status ||
+      "regular",
+
+    status: "Pending",
+  });
   res.status(201).json({ success: true, message: "Registration request submitted! Admin will review it.", registration });
 }));
 
@@ -42,9 +53,21 @@ router.put("/:id/approve", protect, authorizeRoles("admin"), asyncHandler(async 
   // Create Student or Faculty profile
   if (reg.role === "student") {
     await Student.create({
-      user: user._id, rollNo: reg.rollNo || `STU${Date.now()}`,
-      branch: reg.branch || "CSE", semester: reg.semester || 1,
-      year: reg.year || 1, section: reg.section || "A",
+      user: user._id,
+
+      rollNo: reg.rollNo || `STU${Date.now()}`,
+
+      branch: reg.branch || "CSE",
+
+      semester: reg.semester || 1,
+
+      year: reg.year || 1,
+
+      section: reg.section || "A",
+
+      status: reg.studentStatus || "regular",
+
+      backlogCount: reg.backlogCount || 0,
     });
   } else if (reg.role === "faculty") {
     await Faculty.create({
