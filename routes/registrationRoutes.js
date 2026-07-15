@@ -47,7 +47,7 @@ router.put("/:id/approve", protect, authorizeRoles("admin"), asyncHandler(async 
   const hashedPassword = await bcrypt.hash(reg.password, 10);
   const user = await User.create({
     name: reg.name, email: reg.email,
-    password: hashedPassword, role: reg.role, phone: reg.phone,
+    password: reg.password, role: reg.role, phone: reg.phone,
   });
 
   // Create Student or Faculty profile

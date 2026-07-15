@@ -129,6 +129,20 @@ export const login = asyncHandler(async (req, res) => {
   }
   const user = await User.findOne({ email });
 
+  console.log("================================");
+  console.log("LOGIN EMAIL:", email);
+  console.log("USER FOUND:", user);
+
+  if (user) {
+    console.log("ROLE:", user.role);
+    console.log("HASH:", user.password);
+
+    const match = await user.matchPassword(password);
+    console.log("PASSWORD MATCH:", match);
+  }
+
+  console.log("================================");
+
   console.log("USER FOUND:", user?.email);
   console.log("DB PASSWORD:", user?.password);
 
