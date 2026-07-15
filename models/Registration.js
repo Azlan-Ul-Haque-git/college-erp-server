@@ -21,7 +21,7 @@ const registrationSchema = new mongoose.Schema({
     enum: ["regular", "backlog", "ba_scheme", "passout"],
     default: "regular",
   },
-
+  // 
   status: {
     type: String,
     enum: ["Pending", "Approved", "Rejected"],
