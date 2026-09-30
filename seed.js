@@ -21,7 +21,7 @@ const userSchema = new mongoose.Schema({
 
 const studentSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-    rollNo: String, branch: String, year: Number,
+    rollNumber: String, branch: String, year: Number,
     semester: Number, section: String,
     admissionNo: String, parentName: String, parentPhone: String,
     faceData: { type: String, default: "" },
@@ -91,16 +91,16 @@ async function seed() {
 
         // ── Students ──
         const studentsData = [
-            { name: "Rahul Sharma", email: "student@college.edu", phone: "9777777771", rollNo: "CSE2021001", branch: "CSE", year: 3, semester: 5, section: "A" },
-            { name: "Priya Verma", email: "priya@college.edu", phone: "9777777772", rollNo: "CSE2021002", branch: "CSE", year: 3, semester: 5, section: "A" },
-            { name: "Amit Singh", email: "amit.s@college.edu", phone: "9777777773", rollNo: "CSE2021003", branch: "CSE", year: 3, semester: 5, section: "A" },
-            { name: "Neha Gupta", email: "neha@college.edu", phone: "9777777774", rollNo: "IT2021001", branch: "IT", year: 3, semester: 5, section: "B" },
-            { name: "Rohan Patel", email: "rohan@college.edu", phone: "9777777775", rollNo: "IT2021002", branch: "IT", year: 3, semester: 5, section: "B" },
+            { name: "Rahul Sharma", email: "student@college.edu", phone: "9777777771", rollNumber: "CSE2021001", branch: "CSE", year: 3, semester: 5, section: "A" },
+            { name: "Priya Verma", email: "priya@college.edu", phone: "9777777772", rollNumber: "CSE2021002", branch: "CSE", year: 3, semester: 5, section: "A" },
+            { name: "Amit Singh", email: "amit.s@college.edu", phone: "9777777773", rollNumber: "CSE2021003", branch: "CSE", year: 3, semester: 5, section: "A" },
+            { name: "Neha Gupta", email: "neha@college.edu", phone: "9777777774", rollNumber: "IT2021001", branch: "IT", year: 3, semester: 5, section: "B" },
+            { name: "Rohan Patel", email: "rohan@college.edu", phone: "9777777775", rollNumber: "IT2021002", branch: "IT", year: 3, semester: 5, section: "B" },
         ];
 
         for (const s of studentsData) {
             const u = await User.create({ name: s.name, email: s.email, password: await hash("student123"), role: "student", phone: s.phone });
-            const st = await Student.create({ user: u._id, rollNo: s.rollNo, branch: s.branch, year: s.year, semester: s.semester, section: s.section, admissionNo: `ADM${s.rollNo}`, parentName: `Parent of ${s.name}`, parentPhone: "9666666666" });
+            const st = await Student.create({ user: u._id, rollNumber: s.rollNumber, branch: s.branch, year: s.year, semester: s.semester, section: s.section, admissionNo: `ADM${s.rollNumber}`, parentName: `Parent of ${s.name}`, parentPhone: "9666666666" });
             // Create fees for each student
             await Fees.create({ student: st._id, totalAmount: 45000, paidAmount: s.email === "student@college.edu" ? 45000 : 22500, dueAmount: s.email === "student@college.edu" ? 0 : 22500, status: s.email === "student@college.edu" ? "Paid" : "Partial", semester: 5, academicYear: "2024-25" });
         }

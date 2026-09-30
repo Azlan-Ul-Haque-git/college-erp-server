@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 const feesSchema = new mongoose.Schema({
-  student:     { type:mongoose.Schema.Types.ObjectId, ref:"Student", required:true },
+  student:     { type:mongoose.Schema.Types.ObjectId, ref:"User", required:true },
   totalAmount: { type:Number, required:true },
   paidAmount:  { type:Number, default:0 },
   dueAmount:   { type:Number },

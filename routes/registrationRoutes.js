@@ -1,11 +1,9 @@
 import express from "express";
 import asyncHandler from "express-async-handler";
-import bcrypt from "bcryptjs";
 import { protect } from "../middleware/authMiddleware.js";
 import { authorizeRoles } from "../middleware/roleMiddleware.js";
 import Registration from "../models/Registration.js";
 import User from "../models/User.js";
-import Student from "../models/Student.js";
 import Faculty from "../models/Faculty.js";
 
 const router = express.Router();
@@ -128,25 +126,19 @@ router.put(
 
     if (reg.role === "student") {
 
-      const student = await Student.create({
-
-        user: user._id,
-
-        rollNo: reg.rollNo || `STU${Date.now()}`,
-
+      await User.findByIdAndUpdate(user._id, {
+        rollNumber: reg.rollNumber || `STU${Date.now()}`,
         branch: reg.branch || "CSE",
-
         semester: reg.semester || 1,
-
         year: reg.year || 1,
-
         section: reg.section || "A",
-
+        admissionNo: reg.admissionNo || "",
+        parentName: reg.parentName || "",
+        parentPhone: reg.parentPhone || "",
         status: reg.studentStatus || "regular",
-
         backlogCount: reg.backlogCount || 0,
-
       });
+
 
       console.log("STUDENT CREATED:");
       console.log(student);
@@ -154,17 +146,14 @@ router.put(
     }
 
     else if (reg.role === "faculty") {
-
       const faculty = await Faculty.create({
-
         user: user._id,
-
         department: reg.department || "CSE",
-
         designation: reg.designation || "Lecturer",
-
-        employeeId: `FAC${Date.now()}`,
-
+        employeeId: reg.employeeId || `FAC${Date.now()}`,
+        qualification: reg.qualification || "",
+        experience: reg.experience || 0,
+        subjects: reg.subjects || [],
       });
 
       console.log("FACULTY CREATED:");

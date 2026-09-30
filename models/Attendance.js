@@ -6,7 +6,7 @@ export const COLLEGE_LOCATION = {
   name: "Govt Kalaniketan Polytechnic College Jabalpur",
   lat: 23.1815,
   lng: 79.9864,
-  radius: 200 // meters
+  radius: 500 // meters
 };
 
 /* ───────────── Checkin Checkout Schema ───────────── */

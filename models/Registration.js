@@ -6,19 +6,29 @@ const registrationSchema = new mongoose.Schema({
   role: { type: String, enum: ["student", "faculty"], required: true },
   phone: String,
   // Student fields
-  rollNo: String,
+  rollNumber: String,
   branch: String,
   semester: Number,
   year: Number,
   section: String,
+
+  admissionNo: String,
+  parentName: String,
+  parentPhone: String,
+  backlogCount: { type: Number, default: 0 },
+
   // Faculty fields
   department: String,
   designation: String,
+  employeeId: String,
+  qualification: String,
+  experience: { type: Number, default: 0 },
+  subjects: [String],
   // Status
 
   studentStatus: {
     type: String,
-    enum: ["regular", "backlog", "ba_scheme", "passout"],
+    enum: ["regular", "backlog", "ba", "passout"],
     default: "regular",
   },
   // 

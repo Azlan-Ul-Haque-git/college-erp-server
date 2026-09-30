@@ -2,33 +2,185 @@ import express from "express";
 import { protect } from "../middleware/authMiddleware.js";
 import { authorizeRoles } from "../middleware/roleMiddleware.js";
 import Fees from "../models/Fees.js";
-import Student from "../models/Student.js";
+import User from "../models/User.js";
 import asyncHandler from "express-async-handler";
 
 const router = express.Router();
 
-router.get("/", protect, authorizeRoles("admin"), asyncHandler(async (req, res) => {
-  const fees = await Fees.find().populate({ path: "student", populate: { path: "user", select: "name" } });
-  res.json({ success: true, fees });
-}));
+/* ═════════════════════════════════════════════════════════════════════════
+   GET /api/fees/students-list  — admin + faculty
+   Fee form ke dropdown ke liye students list
+   ═════════════════════════════════════════════════════════════════════════ */
+router.get(
+  "/students-list",
+  protect,
+  authorizeRoles("admin", "faculty"),
+  asyncHandler(async (req, res) => {
+    const students = await User.find({ role: "student" })
+      .select("name email rollNumber branch semester year section")
+      .sort({ name: 1 });
 
-router.get("/my-fees", protect, authorizeRoles("student"), asyncHandler(async (req, res) => {
-  const student = await Student.findOne({ user: req.user._id });
-  const fees = await Fees.findOne({ student: student?._id }).sort({ createdAt: -1 });
-  res.json({ success: true, fees });
-}));
+    res.json({ success: true, data: students });
+  })
+);
 
-router.post("/", protect, authorizeRoles("admin"), asyncHandler(async (req, res) => {
-  const fee = await Fees.create(req.body);
-  res.status(201).json({ success: true, fee });
-}));
-router.put("/:id", protect, authorizeRoles("admin"), asyncHandler(async (req, res) => {
-  const fee = await Fees.findByIdAndUpdate(req.params.id, req.body, { new: true });
-  res.json({ success: true, fee });
-}));
+/* ═════════════════════════════════════════════════════════════════════════
+   GET /api/fees/my-fees  — student only
+   MUST be before "/" route warna "/:id" se clash ho jaayega
+   ═════════════════════════════════════════════════════════════════════════ */
+router.get(
+  "/my-fees",
+  protect,
+  authorizeRoles("student"),
+  asyncHandler(async (req, res) => {
+    // Latest fee record — single object return karo
+    const fees = await Fees.findOne({ student: req.user._id })
+      .sort({ createdAt: -1 });
 
-router.delete("/:id", protect, authorizeRoles("admin"), asyncHandler(async (req, res) => {
-  await Fees.findByIdAndDelete(req.params.id);
-  res.json({ success: true, message: "Deleted" });
-}));
+    res.json({
+      success: true,
+      fees: fees || null,
+    });
+  })
+);
+/* ═════════════════════════════════════════════════════════════════════════
+   GET /api/fees  — admin only
+   Saari fees, student details ke saath
+   ═════════════════════════════════════════════════════════════════════════ */
+router.get(
+  "/",
+  protect,
+  authorizeRoles("admin"),
+  asyncHandler(async (req, res) => {
+    const fees = await Fees.find()
+      .populate("student", "name email rollNumber branch semester year section")
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, fees });
+  })
+);
+
+/* ═════════════════════════════════════════════════════════════════════════
+   POST /api/fees  — admin only  (YEH MISSING THA!)
+   Naya fee record create karo
+   ═════════════════════════════════════════════════════════════════════════ */
+router.post(
+  "/",
+  protect,
+  authorizeRoles("admin"),
+  asyncHandler(async (req, res) => {
+    const {
+      student,
+      totalAmount,
+      paidAmount,
+      semester,
+      academicYear,
+      dueDate,
+    } = req.body;
+
+    // Validation
+    if (!student || !totalAmount) {
+      res.status(400);
+      throw new Error("Student and total amount are required.");
+    }
+
+    // Student exist karta hai ya nahi
+    const studentExists = await User.findById(student);
+    if (!studentExists || studentExists.role !== "student") {
+      res.status(404);
+      throw new Error("Student not found.");
+    }
+
+    // Duplicate check (same student + same semester + same year)
+    const existing = await Fees.findOne({
+      student,
+      semester: Number(semester) || 1,
+      academicYear: academicYear || "2024-25",
+    });
+
+    if (existing) {
+      res.status(409);
+      throw new Error(
+        "Fee record already exists for this student for this semester."
+      );
+    }
+
+    const fee = await Fees.create({
+      student,
+      totalAmount: Number(totalAmount),
+      paidAmount: Number(paidAmount) || 0,
+      semester: Number(semester) || 1,
+      academicYear: academicYear || "2024-25",
+      dueDate: dueDate || null,
+    });
+
+    // Populated response
+    const populated = await Fees.findById(fee._id).populate(
+      "student",
+      "name email rollNumber branch"
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Fee record added.",
+      fee: populated,
+    });
+  })
+);
+
+/* ═════════════════════════════════════════════════════════════════════════
+   PUT /api/fees/:id  — admin only
+   Fee record update karo (paidAmount mostly)
+   ═════════════════════════════════════════════════════════════════════════ */
+router.put(
+  "/:id",
+  protect,
+  authorizeRoles("admin"),
+  asyncHandler(async (req, res) => {
+    const updates = { ...req.body };
+
+    // Types ensure karo
+    if (updates.totalAmount !== undefined) {
+      updates.totalAmount = Number(updates.totalAmount);
+    }
+    if (updates.paidAmount !== undefined) {
+      updates.paidAmount = Number(updates.paidAmount);
+    }
+    if (updates.semester !== undefined) {
+      updates.semester = Number(updates.semester);
+    }
+
+    const fee = await Fees.findByIdAndUpdate(req.params.id, updates, {
+      new: true,
+      runValidators: true,
+    }).populate("student", "name email rollNumber branch");
+
+    if (!fee) {
+      res.status(404);
+      throw new Error("Fee record not found.");
+    }
+
+    res.json({ success: true, fee });
+  })
+);
+
+/* ═════════════════════════════════════════════════════════════════════════
+   DELETE /api/fees/:id  — admin only
+   ═════════════════════════════════════════════════════════════════════════ */
+router.delete(
+  "/:id",
+  protect,
+  authorizeRoles("admin"),
+  asyncHandler(async (req, res) => {
+    const fee = await Fees.findByIdAndDelete(req.params.id);
+
+    if (!fee) {
+      res.status(404);
+      throw new Error("Fee record not found.");
+    }
+
+    res.json({ success: true, message: "Fee record deleted." });
+  })
+);
+
 export default router;

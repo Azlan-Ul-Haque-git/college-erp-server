@@ -59,14 +59,14 @@ router.post(
       throw new Error("User not found");
     }
 
-    if (!user.profilePicture) {
+    if (!user.avatar) {
       res.status(400);
-      throw new Error("Profile picture missing");
+      throw new Error("Profile picture missing. Please upload a profile picture first.");
     }
 
     /* ───── Face verification ───── */
 
-    const match = await verifyFace(image, user.profilePicture);
+    const match = await verifyFace(image, user.avatar);
 
     if (!match) {
       res.status(400);
@@ -184,12 +184,12 @@ router.post(
 
     const user = await User.findById(req.user._id);
 
-    if (!user?.profilePicture) {
+    if (!user?.avatar) {
       res.status(400);
-      throw new Error("Profile picture missing");
+      throw new Error("Profile picture missing.Please upload a profile picture first.");
     }
 
-    const match = await verifyFace(image, user.profilePicture);
+    const match = await verifyFace(image, user.avatar);
 
     if (!match) {
       res.status(400);
@@ -242,7 +242,27 @@ router.get(
 );
 
 /* ═════════ ADMIN: PENDING APPROVALS ═════════ */
+router.get(
+  "/pending-approvals",
+  protect,
+  authorizeRoles("admin", "faculty"),
+  asyncHandler(async (req, res) => {
+    const { userType } = req.query;
 
+    const filter = { approvalStatus: "pending" };
+    if (userType) filter.userType = userType;
+
+    const records = await Attendance.find(filter)
+      .populate("user", "name email role rollNumber branch department")
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      count: records.length,
+      data: records,
+    });
+  })
+);
 
 /* ═════════ ADMIN: APPROVE / REJECT ═════════ */
 
@@ -387,26 +407,33 @@ router.get(
   "/my-summary",
   protect,
   asyncHandler(async (req, res) => {
-
     const records = await Attendance.find({
       user: req.user._id,
       approvalStatus: "approved",
     });
 
     const total = records.length;
+    const present = records.filter((r) => r.status === "present").length;
+    const absent = records.filter((r) => r.status === "absent").length;
+    const percentage = total > 0 ? ((present / total) * 100).toFixed(2) : 0;
 
-    const present = records.filter(
-      r => r.status === "present"
-    ).length;
+    // Subject-wise breakdown
+    const subjectMap = {};
+    records.forEach((r) => {
+      const subject = r.subject || "General";
+      if (!subjectMap[subject]) {
+        subjectMap[subject] = { subject, present: 0, total: 0 };
+      }
+      subjectMap[subject].total += 1;
+      if (r.status === "present") subjectMap[subject].present += 1;
+    });
 
-    const absent = records.filter(
-      r => r.status === "absent"
-    ).length;
-
-    const percentage =
-      total > 0
-        ? ((present / total) * 100).toFixed(2)
-        : 0;
+    const subjects = Object.values(subjectMap).map((s) => ({
+      subject: s.subject,
+      present: s.present,
+      total: s.total,
+      percentage: s.total > 0 ? Math.round((s.present / s.total) * 100) : 0,
+    }));
 
     res.json({
       success: true,
@@ -415,9 +442,10 @@ router.get(
         present,
         absent,
         percentage,
+        subjects,
       },
     });
-
   })
 );
+
 export default router;

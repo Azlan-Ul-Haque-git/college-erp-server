@@ -40,6 +40,66 @@ const userSchema = new mongoose.Schema(
       default: true,
     },
 
+    /* ═════ STUDENT FIELDS ═════ */
+
+    rollNumber: {
+      type: String,
+      default: "",
+    },
+
+    branch: {
+      type: String,
+      default: "",
+    },
+
+    year: {
+      type: Number,
+      default: 1,
+    },
+
+    semester: {
+      type: Number,
+      default: 1,
+    },
+
+    section: {
+      type: String,
+      default: "A",
+    },
+
+    admissionNo: {
+      type: String,
+      default: "",
+    },
+
+    parentName: {
+      type: String,
+      default: "",
+    },
+
+    parentPhone: {
+      type: String,
+      default: "",
+    },
+
+    status: {
+      type: String,
+      enum: ["regular", "backlog", "ba", "passout"],
+      default: "regular",
+    },
+
+    backlogCount: {
+      type: Number,
+      default: 0,
+    },
+
+    addedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+
+    /* ═════ STUDENT FIELDS END ═════ */
+
     resetOTP: String,
     resetOTPExpire: Date,
   },

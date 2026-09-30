@@ -1,6 +1,5 @@
 import asyncHandler from "express-async-handler";
 import User from "../models/User.js";
-import Student from "../models/Student.js";
 import Faculty from "../models/Faculty.js";
 import { generateToken, generateOTP } from "../utils/generateToken.js";
 import { sendEmail } from "../utils/sendEmail.js";
@@ -38,20 +37,24 @@ export const register = asyncHandler(async (req, res) => {
 
   // ================= STUDENT =================
 
+  // ================= STUDENT =================
+
+  // ================= STUDENT =================
+
   if (role === "student") {
-    await Student.create({
-      user: user._id,
-      rollNo: extra.rollNo,
+    // User already created above. Ab usi User document mein
+    // student-specific fields daalo.
+    await User.findByIdAndUpdate(user._id, {
+      rollNumber: extra.rollNumber,
       branch: extra.branch,
-      year: +extra.year,
-      semester: +extra.semester,
+      year: +extra.year || 1,
+      semester: +extra.semester || 1,
       section: extra.section,
       admissionNo: extra.admissionNo,
       parentName: extra.parentName,
       parentPhone: extra.parentPhone,
-
       status: extra.status || "regular",
-      backlogCount: extra.backlogCount || 0,
+      backlogCount: +extra.backlogCount || 0,
     });
   }
 
@@ -165,9 +168,9 @@ export const login = asyncHandler(async (req, res) => {
   let profile = null;
 
   if (user.role === "student") {
-    profile = await Student.findOne({ user: user._id }).select("-faceData");
-  }
 
+    profile = null;
+  }
   else if (user.role === "faculty") {
     profile = await Faculty.findOne({ user: user._id });
   }
@@ -198,13 +201,10 @@ export const getMe = asyncHandler(async (req, res) => {
 
   let profile = null;
 
-  if (user.role === "student") {
-    profile = await Student.findOne({ user: user._id }).select("-faceData");
-  }
-
-  else if (user.role === "faculty") {
+  if (user.role === "faculty") {
     profile = await Faculty.findOne({ user: user._id });
   }
+  // student ke liye profile null rahega — user object mein saara data hai
 
   res.json({
     success: true,
