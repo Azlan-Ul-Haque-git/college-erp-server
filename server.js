@@ -28,7 +28,7 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import rgpvRoutes from "./routes/rgpvRoutes.js";
 
 import cron from "node-cron";
-import { fetchRGPVNotices } from "./utils/fetchRGPVNotices.js";
+import { fetchRGPVNotices } from "./scrapers/rgpvScraper.js";
 
 import {
   errorHandler,

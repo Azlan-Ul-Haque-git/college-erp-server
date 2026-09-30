@@ -4,6 +4,7 @@ import { authorizeRoles } from "../middleware/roleMiddleware.js";
 import Fees from "../models/Fees.js";
 import User from "../models/User.js";
 import asyncHandler from "express-async-handler";
+import Notification from "../models/Notification.js";
 
 const router = express.Router();
 
@@ -113,6 +114,12 @@ router.post(
       academicYear: academicYear || "2024-25",
       dueDate: dueDate || null,
     });
+    await Notification.create({
+      user: student,
+      title: "💰 Fee Record Added",
+      message: `₹${totalAmount} total fee added for Semester ${semester}. Due: ₹${totalAmount - (Number(paidAmount) || 0)}`,
+      type: "fee",
+    });
 
     // Populated response
     const populated = await Fees.findById(fee._id).populate(
@@ -159,6 +166,14 @@ router.put(
       res.status(404);
       throw new Error("Fee record not found.");
     }
+    if (updates.paidAmount !== undefined) {
+      await Notification.create({
+        user: fee.student._id,
+        title: "💰 Fee Payment Updated",
+        message: `Payment of ₹${updates.paidAmount} recorded. Due: ₹${fee.dueAmount}`,
+        type: "fee",
+      });
+    }
 
     res.json({ success: true, fee });
   })
@@ -178,6 +193,12 @@ router.delete(
       res.status(404);
       throw new Error("Fee record not found.");
     }
+    await Notification.create({
+      user: fee.student,
+      title: "⚠️ Fee Record Removed",
+      message: "Your fee record has been removed by admin. Contact office for details.",
+      type: "fee",
+    });
 
     res.json({ success: true, message: "Fee record deleted." });
   })

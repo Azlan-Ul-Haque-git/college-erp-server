@@ -1,18 +1,46 @@
 import express from "express";
-import Notification from "../models/Notification.js";
+import asyncHandler from "express-async-handler";
+import { protect } from "../middleware/authMiddleware.js";
+import RGPVNotice from "../models/RGPVNotice.js";
+import { fetchRGPVNotices } from "../scrapers/rgpvScraper.js";
 
 const router = express.Router();
 
-router.get("/", async (req, res) => {
+/* ═════════ GET RGPV NOTICES ═════════ */
+router.get(
+    "/",
+    protect,
+    asyncHandler(async (req, res) => {
+        const notices = await RGPVNotice.find()
+            .sort({ createdAt: -1 })
+            .limit(20);
 
-    const notices = await Notification.find({
-        title: "RGPV Update"
+        res.json({
+            success: true,
+            count: notices.length,
+            data: notices,
+        });
     })
-        .sort({ createdAt: -1 })
-        .limit(20);
+);
 
-    res.json({ notices });
+/* ═════════ MANUAL REFRESH (admin only) ═════════ */
+router.post(
+    "/refresh",
+    protect,
+    asyncHandler(async (req, res) => {
+        if (req.user.role !== "admin") {
+            res.status(403);
+            throw new Error("Only admin can refresh");
+        }
 
-});
+        const result = await fetchRGPVNotices();
+
+        res.json({
+            success: true,
+            message: `Fetched ${result.added} new notices`,
+            ...result,
+        });
+    })
+);
 
 export default router;

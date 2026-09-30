@@ -3,27 +3,33 @@ import asyncHandler from "express-async-handler";
 import { protect } from "../middleware/authMiddleware.js";
 import { authorizeRoles } from "../middleware/roleMiddleware.js";
 import Leave from "../models/Leave.js";
+import Notification from "../models/Notification.js";
+import User from "../models/User.js";   // ← ye add karo
 
 const router = express.Router();
-
 /* Apply leave */
-router.post(
-  "/",
-  protect,
-  asyncHandler(async (req, res) => {
-    const leave = await Leave.create({
-      ...req.body,
-      appliedBy: req.user._id,
-      role: req.user.role,
-      status: "Pending"
-    });
 
-    res.status(201).json({
-      success: true,
-      leave
-    });
-  })
-);
+
+router.post("/", protect, asyncHandler(async (req, res) => {
+  const leave = await Leave.create({
+    ...req.body,
+    appliedBy: req.user._id,
+    role: req.user.role,
+  });
+
+  // Admins ko notify karo
+  const admins = await User.find({ role: "admin" });
+  await Notification.insertMany(
+    admins.map((a) => ({
+      user: a._id,
+      title: "🏖️ Leave Application",
+      message: `${req.user.name} applied for ${leave.leaveType} leave`,
+      type: "leave",
+    }))
+  );
+
+  res.status(201).json({ success: true, leave });
+}));
 
 /* My leaves */
 router.get(

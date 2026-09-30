@@ -60,21 +60,21 @@ router.post("/", asyncHandler(async (req, res) => {
 router.get(
   "/",
   protect,
-  authorizeRoles("admin"),
+  authorizeRoles("admin", "faculty"),   // ← faculty add karo
   asyncHandler(async (req, res) => {
+    // Admin — saare registrations dikhao
+    // Faculty — sirf students ke registrations dikhao
+    const filter = req.user.role === "faculty"
+      ? { role: "student" }
+      : {};
 
-    const registrations = await Registration.find().sort({
+    const registrations = await Registration.find(filter).sort({
       createdAt: -1,
     });
 
-    res.json({
-      success: true,
-      registrations,
-    });
-
+    res.json({ success: true, registrations });
   })
 );
-
 
 // =========================
 // Admin — Approve Registration
@@ -140,8 +140,7 @@ router.put(
       });
 
 
-      console.log("STUDENT CREATED:");
-      console.log(student);
+      console.log("STUDENT CREATED:", user._id);
 
     }
 
