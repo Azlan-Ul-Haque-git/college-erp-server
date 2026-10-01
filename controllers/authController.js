@@ -4,20 +4,20 @@ import Faculty from "../models/Faculty.js";
 import { generateToken, generateOTP } from "../utils/generateToken.js";
 import { sendEmail } from "../utils/sendEmail.js";
 
-export const register = asyncHandler(async (req, res) => {
+/* ═══════════════════════════════════════════════════════════
+   REGISTER
+   ═══════════════════════════════════════════════════════════ */
 
+export const register = asyncHandler(async (req, res) => {
   const {
     name,
     email,
     password,
     role,
     phone,
-
     status,
     backlogCount,
-
     ...extra
-
   } = req.body;
 
   const exists = await User.findOne({ email });
@@ -32,18 +32,11 @@ export const register = asyncHandler(async (req, res) => {
     email,
     password,
     role,
-    phone
+    phone,
   });
 
-  // ================= STUDENT =================
-
-  // ================= STUDENT =================
-
-  // ================= STUDENT =================
-
+  /* ───── STUDENT ───── */
   if (role === "student") {
-    // User already created above. Ab usi User document mein
-    // student-specific fields daalo.
     await User.findByIdAndUpdate(user._id, {
       rollNumber: extra.rollNumber,
       branch: extra.branch,
@@ -57,70 +50,53 @@ export const register = asyncHandler(async (req, res) => {
       backlogCount: +extra.backlogCount || 0,
     });
   }
-
-  // ================= FACULTY =================
-
+  /* ───── FACULTY ───── */
   else if (role === "faculty") {
-
     await Faculty.create({
-
       user: user._id,
-
       employeeId: extra.employeeId,
       department: extra.department,
       designation: extra.designation,
-
       subjects: extra.subjects || [],
-
       qualification: extra.qualification,
       experience: +extra.experience || 0,
-
     });
-
   }
 
-  // ================= EMAIL =================
-
+  /* ───── WELCOME EMAIL (non-blocking) ───── */
   sendEmail({
     to: email,
     subject: "Welcome to College ERP",
     html: `
       <div style="padding:20px;background:linear-gradient(135deg,#667eea,#764ba2);border-radius:12px;color:#fff">
         <h2>Welcome, ${name}!</h2>
-
         <p>Email: ${email}</p>
         <p>Role: ${role}</p>
-
         ${role === "student"
-        ? `
-              <p>Status: ${status || "regular"}</p>
-              <p>Backlogs: ${+backlogCount || 0}</p>
-            `
+        ? `<p>Status: ${status || "regular"}</p>
+               <p>Backlogs: ${+backlogCount || 0}</p>`
         : ""
       }
-
         <p>Temporary Password: ${password}</p>
       </div>
-    `
-  }).catch(() => { });
-
-  // ================= RESPONSE =================
+    `,
+  }).catch((err) => console.log("Welcome email failed:", err.message));
 
   res.status(201).json({
-
     success: true,
     message: "User registered",
-
     user: {
       _id: user._id,
       name,
       email,
-      role
-    }
-
+      role,
+    },
   });
-
 });
+
+/* ═══════════════════════════════════════════════════════════
+   LOGIN
+   ═══════════════════════════════════════════════════════════ */
 
 export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
@@ -155,14 +131,14 @@ export const login = asyncHandler(async (req, res) => {
     profile = await Faculty.findOne({ user: user._id });
   }
 
-  // ✅ FULL user object — student fields included
+  /* ✅ FULL user object — student fields included */
   const userResponse = {
     _id: user._id,
     name: user.name,
     email: user.email,
     role: user.role,
-    avatar: user.avatar,
-    phone: user.phone,
+    avatar: user.avatar || "",
+    phone: user.phone || "",
 
     // Student fields
     rollNumber: user.rollNumber || "",
@@ -187,6 +163,10 @@ export const login = asyncHandler(async (req, res) => {
   });
 });
 
+/* ═══════════════════════════════════════════════════════════
+   GET ME
+   ═══════════════════════════════════════════════════════════ */
+
 export const getMe = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id).select("-password");
 
@@ -200,10 +180,14 @@ export const getMe = asyncHandler(async (req, res) => {
     success: true,
     user: {
       ...user.toObject(),
-      profile
-    }
+      profile,
+    },
   });
 });
+
+/* ═══════════════════════════════════════════════════════════
+   FORGOT PASSWORD
+   ═══════════════════════════════════════════════════════════ */
 
 export const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
@@ -228,7 +212,6 @@ export const forgotPassword = asyncHandler(async (req, res) => {
 
   console.log(`🔐 OTP generated for ${email}: ${otp}`);
 
-  // ✅ AWAIT the email — if it fails, we return 500 (not a fake "success")
   try {
     await sendEmail({
       to: email,
@@ -267,14 +250,17 @@ export const forgotPassword = asyncHandler(async (req, res) => {
   }
 });
 
-export const resetPassword = asyncHandler(async (req, res) => {
+/* ═══════════════════════════════════════════════════════════
+   RESET PASSWORD
+   ═══════════════════════════════════════════════════════════ */
 
+export const resetPassword = asyncHandler(async (req, res) => {
   const { email, otp, newPassword } = req.body;
 
   const user = await User.findOne({
     email,
     resetOTP: otp,
-    resetOTPExpire: { $gt: Date.now() }
+    resetOTPExpire: { $gt: Date.now() },
   });
 
   if (!user) {
@@ -290,13 +276,15 @@ export const resetPassword = asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
-    message: "Password reset successful"
+    message: "Password reset successful",
   });
-
 });
 
-export const changePassword = asyncHandler(async (req, res) => {
+/* ═══════════════════════════════════════════════════════════
+   CHANGE PASSWORD
+   ═══════════════════════════════════════════════════════════ */
 
+export const changePassword = asyncHandler(async (req, res) => {
   const { oldPassword, newPassword } = req.body;
 
   const user = await User.findById(req.user._id);
@@ -312,7 +300,6 @@ export const changePassword = asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
-    message: "Password changed"
+    message: "Password changed",
   });
-
 });

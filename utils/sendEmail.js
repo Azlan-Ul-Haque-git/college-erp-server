@@ -1,49 +1,42 @@
-import nodemailer from "nodemailer";
-
-// ═══════════════════════════════════════════════════════════
-//  Resend SMTP — HTTPS-based, works on Render free tier
-// ═══════════════════════════════════════════════════════════
-
-const transporter = nodemailer.createTransport({
-  host: "smtp.resend.com",
-  port: 465,
-  secure: true,
-  auth: {
-    user: "resend",
-    pass: process.env.RESEND_API_KEY,
-  },
-  connectionTimeout: 20000,
-  greetingTimeout: 20000,
-  socketTimeout: 25000,
-});
-
-// Verify connection at startup
-transporter.verify((err, success) => {
-  if (err) {
-    console.error("❌ SMTP verify failed:", err.message);
-    console.error("   RESEND_API_KEY length:", process.env.RESEND_API_KEY?.length);
-  } else {
-    console.log("✅ Email server ready (Resend)");
-  }
-});
+/* ═══════════════════════════════════════════════════════════
+   Resend HTTP API — works on Render free tier (bypasses SMTP block)
+   ═══════════════════════════════════════════════════════════ */
 
 export const sendEmail = async ({ to, subject, html }) => {
   if (!process.env.RESEND_API_KEY) {
-    throw new Error("RESEND_API_KEY missing");
+    throw new Error("RESEND_API_KEY missing in environment");
   }
 
-  console.log(`📧 Sending email → ${to}`);
+  console.log(`📧 Sending email → ${to} | Subject: ${subject}`);
 
-  const info = await transporter.sendMail({
-    from: "College ERP <onboarding@resend.dev>",
-    to,
-    subject,
-    html,
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: "College ERP <onboarding@resend.dev>",
+      to: [to],
+      subject,
+      html,
+    }),
   });
 
-  console.log(`✅ Email sent → ${info.messageId}`);
-  return info;
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`❌ Resend API error (${response.status}):`, errorText);
+    throw new Error(`Email send failed (${response.status}): ${errorText}`);
+  }
+
+  const data = await response.json();
+  console.log(`✅ Email sent → ID: ${data.id}`);
+  return data;
 };
+
+/* ═══════════════════════════════════════════════════════════
+   Attendance alert helper
+   ═══════════════════════════════════════════════════════════ */
 
 export const sendAttendanceAlert = async (email, name, pct, subject) => {
   await sendEmail({
