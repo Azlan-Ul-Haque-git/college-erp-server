@@ -1,66 +1,49 @@
 import nodemailer from "nodemailer";
 
 // ═══════════════════════════════════════════════════════════
-//  Gmail transporter — Port 465 (SSL) is more reliable on
-//  cloud hosts like Render than 587 (STARTTLS), which is
-//  sometimes blocked.
+//  Resend SMTP — HTTPS-based, works on Render free tier
 // ═══════════════════════════════════════════════════════════
 
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
+  host: "smtp.resend.com",
   port: 465,
-  secure: true,                 // SSL
+  secure: true,
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: "resend",
+    pass: process.env.RESEND_API_KEY,
   },
-  tls: {
-    rejectUnauthorized: false,  // prevents self-signed cert errors
-  },
-  connectionTimeout: 10000,     // 10 sec timeout — fail fast
-  greetingTimeout: 10000,
-  socketTimeout: 15000,
+  connectionTimeout: 20000,
+  greetingTimeout: 20000,
+  socketTimeout: 25000,
 });
 
-// ═══════════════════════════════════════════════════════════
-//  Verify SMTP connection ONCE at startup
-// ═══════════════════════════════════════════════════════════
-
+// Verify connection at startup
 transporter.verify((err, success) => {
   if (err) {
     console.error("❌ SMTP verify failed:", err.message);
-    console.error("   EMAIL_USER:", process.env.EMAIL_USER);
-    console.error("   EMAIL_PASS length:", process.env.EMAIL_PASS?.length);
+    console.error("   RESEND_API_KEY length:", process.env.RESEND_API_KEY?.length);
   } else {
-    console.log("✅ SMTP server ready — emails will work");
+    console.log("✅ Email server ready (Resend)");
   }
 });
 
-// ═══════════════════════════════════════════════════════════
-//  Main sendEmail function — THROWS on failure
-// ═══════════════════════════════════════════════════════════
-
 export const sendEmail = async ({ to, subject, html }) => {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    throw new Error("EMAIL_USER or EMAIL_PASS missing in environment");
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error("RESEND_API_KEY missing");
   }
 
-  console.log(`📧 Sending email → ${to} | Subject: ${subject}`);
+  console.log(`📧 Sending email → ${to}`);
 
   const info = await transporter.sendMail({
-    from: `"College ERP" <${process.env.EMAIL_USER}>`,
+    from: "College ERP <onboarding@resend.dev>",
     to,
     subject,
     html,
   });
 
-  console.log(`✅ Email sent → messageId: ${info.messageId}`);
+  console.log(`✅ Email sent → ${info.messageId}`);
   return info;
 };
-
-// ═══════════════════════════════════════════════════════════
-//  Attendance alert helper (unchanged)
-// ═══════════════════════════════════════════════════════════
 
 export const sendAttendanceAlert = async (email, name, pct, subject) => {
   await sendEmail({

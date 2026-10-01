@@ -123,39 +123,23 @@ export const register = asyncHandler(async (req, res) => {
 });
 
 export const login = asyncHandler(async (req, res) => {
-
   const { email, password } = req.body;
 
   if (!email || !password) {
     res.status(400);
     throw new Error("Please provide email and password");
   }
+
   const user = await User.findOne({ email });
 
-  console.log("================================");
-  console.log("LOGIN EMAIL:", email);
-  console.log("USER FOUND:", user);
-
-  if (user) {
-    console.log("ROLE:", user.role);
-    console.log("HASH:", user.password);
-
-    const match = await user.matchPassword(password);
-    console.log("PASSWORD MATCH:", match);
+  if (!user) {
+    res.status(401);
+    throw new Error("Invalid email or password");
   }
 
-  console.log("================================");
+  const isMatch = await user.matchPassword(password);
 
-  console.log("USER FOUND:", user?.email);
-  console.log("DB PASSWORD:", user?.password);
-
-  const isMatch = user
-    ? await user.matchPassword(password)
-    : false;
-
-  console.log("PASSWORD MATCH:", isMatch);
-
-  if (!user || !isMatch) {
+  if (!isMatch) {
     res.status(401);
     throw new Error("Invalid email or password");
   }
@@ -167,36 +151,43 @@ export const login = asyncHandler(async (req, res) => {
 
   let profile = null;
 
-  if (user.role === "student") {
-
-    profile = null;
-  }
-  else if (user.role === "faculty") {
+  if (user.role === "faculty") {
     profile = await Faculty.findOne({ user: user._id });
   }
 
+  // ✅ FULL user object — student fields included
+  const userResponse = {
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    avatar: user.avatar,
+    phone: user.phone,
+
+    // Student fields
+    rollNumber: user.rollNumber || "",
+    branch: user.branch || "",
+    year: user.year || 1,
+    semester: user.semester || 1,
+    section: user.section || "",
+    admissionNo: user.admissionNo || "",
+    parentName: user.parentName || "",
+    parentPhone: user.parentPhone || "",
+    status: user.status || "regular",
+    backlogCount: user.backlogCount || 0,
+
+    // Faculty profile
+    profile,
+  };
+
   res.json({
-
     success: true,
-
     token: generateToken(user._id),
-
-    user: {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      avatar: user.avatar,
-      phone: user.phone,
-      profile
-    }
-
+    user: userResponse,
   });
-
 });
 
 export const getMe = asyncHandler(async (req, res) => {
-
   const user = await User.findById(req.user._id).select("-password");
 
   let profile = null;
@@ -204,7 +195,6 @@ export const getMe = asyncHandler(async (req, res) => {
   if (user.role === "faculty") {
     profile = await Faculty.findOne({ user: user._id });
   }
-  // student ke liye profile null rahega — user object mein saara data hai
 
   res.json({
     success: true,
@@ -213,7 +203,6 @@ export const getMe = asyncHandler(async (req, res) => {
       profile
     }
   });
-
 });
 
 export const forgotPassword = asyncHandler(async (req, res) => {
