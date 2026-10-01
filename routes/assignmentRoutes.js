@@ -88,39 +88,61 @@ router.get(
   protect,
   authorizeRoles("student"),
   asyncHandler(async (req, res) => {
-    // Student data ab User collection mein hai
-    const student = await User.findById(req.user._id);
+    try {
+      console.log("========== /student START ==========");
+      console.log("req.user:", JSON.stringify(req.user));
 
-    if (!student) {
-      res.status(404);
-      throw new Error("Student not found");
+      const student = await User.findById(req.user._id);
+      console.log("student:", student ? {
+        id: student._id,
+        branch: student.branch,
+        semester: student.semester,
+        role: student.role,
+      } : "NULL");
+
+      if (!student) {
+        return res.status(404).json({
+          success: false,
+          message: "Student not found",
+        });
+      }
+
+      const allAssignments = await Assignment.find();
+      console.log("total assignments:", allAssignments.length);
+
+      const studentBranch = (student.branch || "").toUpperCase().trim();
+      const studentSem = Number(student.semester) || 1;
+
+      const filtered = allAssignments.filter((a) => {
+        const aBranch = (a.branch || "").toUpperCase().trim();
+        const aSem = a.semester == null ? null : Number(a.semester);
+        const branchMatch = aBranch === studentBranch || aBranch === "ALL";
+        const semMatch = aSem === null || aSem === studentSem;
+        return branchMatch && semMatch;
+      });
+
+      console.log("matched:", filtered.length);
+      console.log("========== /student END ==========");
+
+      // populate manually
+      const populated = await Assignment.populate(filtered, {
+        path: "createdBy",
+        select: "name email",
+      });
+
+      res.json({
+        success: true,
+        count: filtered.length,
+        assignments: populated,
+      });
+    } catch (err) {
+      console.error("❌ /student ERROR:", err.message);
+      console.error("❌ STACK:", err.stack);
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
     }
-
-    const assignments = await Assignment.find({
-      $and: [
-        {
-          $or: [
-            { branch: student.branch },
-            { branch: "ALL" },
-          ],
-        },
-        {
-          $or: [
-            { semester: student.semester },
-            { semester: null },
-            { semester: "ALL" },
-          ],
-        },
-      ],
-    })
-      .populate("createdBy", "name email")
-      .sort({ dueDate: 1, createdAt: -1 });
-
-    res.json({
-      success: true,
-      count: assignments.length,
-      assignments,
-    });
   })
 );
 
