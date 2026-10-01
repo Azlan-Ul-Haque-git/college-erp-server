@@ -51,7 +51,12 @@ export const authorizeRoles = (...roles) => {
       res.status(401);
       throw new Error("User not authenticated");
     }
-
+    console.log("🔐 Role check:", {
+      userRole: req.user.role,
+      allowedRoles: roles,
+      endpoint: req.originalUrl,
+      userId: req.user._id,
+    });
     if (!roles.includes(req.user.role)) {
       res.status(403);
       throw new Error(`Role '${req.user.role}' is not allowed to access this resource`);
