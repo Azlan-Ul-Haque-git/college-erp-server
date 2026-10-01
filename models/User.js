@@ -84,7 +84,7 @@ const userSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["regular", "backlog", "ba", "passout"],
+      enum: ["regular", "backlog", "ba", "ba_scheme", "passout"],
       default: "regular",
     },
 

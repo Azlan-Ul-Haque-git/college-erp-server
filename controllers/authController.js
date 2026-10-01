@@ -217,8 +217,14 @@ export const getMe = asyncHandler(async (req, res) => {
 });
 
 export const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
 
-  const user = await User.findOne({ email: req.body.email });
+  if (!email) {
+    res.status(400);
+    throw new Error("Email is required");
+  }
+
+  const user = await User.findOne({ email });
 
   if (!user) {
     res.status(404);
@@ -229,34 +235,47 @@ export const forgotPassword = asyncHandler(async (req, res) => {
 
   user.resetOTP = otp;
   user.resetOTPExpire = Date.now() + 10 * 60 * 1000;
-
   await user.save();
 
-  // Response first
-  res.json({
-    success: true,
-    message: "OTP sent to email"
-  });
+  console.log(`🔐 OTP generated for ${email}: ${otp}`);
 
-  // Email background
-  sendEmail({
-    to: req.body.email,
-    subject: "Password Reset OTP",
-    html: `
-      <div style="padding:24px;border:2px solid #667eea;border-radius:12px">
-        <h2 style="color:#667eea">Reset OTP</h2>
-
-        <div style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#764ba2;text-align:center;padding:16px;background:#f3f0ff;border-radius:8px">
-          ${otp}
+  // ✅ AWAIT the email — if it fails, we return 500 (not a fake "success")
+  try {
+    await sendEmail({
+      to: email,
+      subject: "Password Reset OTP — College ERP",
+      html: `
+        <div style="padding:24px;border:2px solid #667eea;border-radius:12px;font-family:Arial,sans-serif;max-width:480px;margin:auto">
+          <h2 style="color:#667eea;margin-top:0">🔐 Password Reset OTP</h2>
+          <p>Hi <strong>${user.name}</strong>,</p>
+          <p>Use the OTP below to reset your password:</p>
+          <div style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#764ba2;text-align:center;padding:16px;background:#f3f0ff;border-radius:8px;margin:16px 0">
+            ${otp}
+          </div>
+          <p style="color:#666;font-size:13px">This OTP expires in 10 minutes. If you didn't request this, ignore this email.</p>
         </div>
+      `,
+    });
 
-        <p style="color:#666;font-size:13px">
-          Expires in 10 minutes.
-        </p>
-      </div>
-    `
-  }).catch(err => console.log("Email error:", err.message));
+    console.log(`✅ OTP email successfully sent to ${email}`);
 
+    res.json({
+      success: true,
+      message: "OTP sent to email",
+    });
+  } catch (err) {
+    console.error(`❌ Failed to send OTP email to ${email}:`, err.message);
+
+    // Roll back OTP — since we couldn't send it
+    user.resetOTP = undefined;
+    user.resetOTPExpire = undefined;
+    await user.save();
+
+    res.status(500);
+    throw new Error(
+      `Could not send OTP email. Reason: ${err.message}. Please contact admin.`
+    );
+  }
 });
 
 export const resetPassword = asyncHandler(async (req, res) => {
